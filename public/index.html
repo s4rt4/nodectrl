@@ -1,0 +1,4295 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NodeCtrl — Package Manager GUI</title>
+<script>
+// Restore theme immediately to avoid flash of wrong theme
+(function() {
+  const t = localStorage.getItem('nc-theme');
+  if (t) document.documentElement.dataset.theme = t;
+})();
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap');
+
+/* ── THEME VARIABLES ─────────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg:            #0a0a0f;
+  --surface:       #111118;
+  --surface2:      #1a1a25;
+  --surface3:      #22222f;
+  --border:        #2a2a3a;
+  --border2:       #3a3a50;
+  --text:          #e8e8f0;
+  --text-muted:    #6b6b85;
+  --text-dim:      #444455;
+  --accent:        #7c6bff;
+  --accent-npm:    #cb3837;
+  --accent-pnpm:   #f9ad00;
+  --accent-nvm:    #3fb950;
+  --accent-bun:    #f4a738;
+  --t-bg:          #05050a;
+  --t-green:       #3fb950;
+  --t-yellow:      #e3b341;
+  --t-red:         #f85149;
+  --t-blue:        #79c0ff;
+  --t-purple:      #d2a8ff;
+  --t-orange:      #ffa657;
+  --shadow:        rgba(0,0,0,0.5);
+  --grid-color:    rgba(124,107,255,0.03);
+}
+
+[data-theme="light"] {
+  --bg:            #f4f4f8;
+  --surface:       #ffffff;
+  --surface2:      #f0f0f5;
+  --surface3:      #e8e8f0;
+  --border:        #d8d8e8;
+  --border2:       #c0c0d5;
+  --text:          #1a1a2e;
+  --text-muted:    #7070a0;
+  --text-dim:      #b0b0c8;
+  --accent:        #5a4af0;
+  --accent-npm:    #c0302f;
+  --accent-pnpm:   #d4920a;
+  --accent-nvm:    #2a9e3d;
+  --accent-bun:    #c47c0c;
+  --t-bg:          #f8f8fc;
+  --t-green:       #1a7a30;
+  --t-yellow:      #9b6e00;
+  --t-red:         #c0201a;
+  --t-blue:        #1060b0;
+  --t-purple:      #7030b0;
+  --t-orange:      #c05010;
+  --shadow:        rgba(0,0,0,0.12);
+  --grid-color:    rgba(90,74,240,0.04);
+}
+
+/* ── RESET & BASE ─────────────────────────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box}
+
+html, body {
+  height: 100%;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.3s, color 0.3s;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── LAYOUT ───────────────────────────────────────────────────── */
+.app {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: 52px 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.main {
+  display: grid;
+  grid-template-columns: 210px 1fr 360px;
+  overflow: hidden;
+}
+
+/* ── HEADER ───────────────────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 1px 0 var(--border);
+}
+
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+}
+
+.logo-icon {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, #7c6bff, #3fb950);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+}
+
+.logo span { color: var(--accent); }
+
+.header-right { display: flex; align-items: center; gap: 12px; }
+
+.conn-badge {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  transition: all 0.3s;
+}
+
+.conn-badge.connected {
+  color: var(--t-green);
+  border-color: var(--t-green);
+  background: rgba(63,185,80,0.08);
+}
+
+.conn-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: background 0.3s;
+}
+
+.conn-badge.connected .conn-dot {
+  background: var(--t-green);
+  box-shadow: 0 0 6px var(--t-green);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+.cwd-display {
+  font-size: 11px;
+  color: var(--text-muted);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+}
+
+.cwd-display:hover {
+  border-color: var(--border2);
+  color: var(--text);
+}
+
+.icon-btn {
+  width: 30px; height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+
+.icon-btn:hover { border-color: var(--accent); color: var(--text); }
+
+/* ── SIDEBAR ──────────────────────────────────────────────────── */
+.sidebar {
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 0;
+}
+
+.sidebar-section { margin-bottom: 4px; }
+
+.sidebar-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  padding: 8px 16px 4px;
+}
+
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  text-align: left;
+  position: relative;
+  transition: all 0.15s;
+  border-radius: 0;
+}
+
+.nav-btn:hover { background: var(--surface2); color: var(--text); }
+
+.nav-btn.active {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.nav-btn.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 4px; bottom: 4px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+}
+
+.nav-btn[data-panel="npm"].active::before   { background: var(--accent-npm); }
+.nav-btn[data-panel="pnpm"].active::before  { background: var(--accent-pnpm); }
+.nav-btn[data-panel="nvm"].active::before   { background: var(--accent-nvm); }
+.nav-btn[data-panel="pkgjson"].active::before { background: var(--accent); }
+
+.nav-badge {
+  margin-left: auto;
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+.badge-npm  { background: rgba(203,56,55,.12);  color: var(--accent-npm); }
+.badge-pnpm { background: rgba(249,173,0,.12);  color: var(--accent-pnpm); }
+.badge-nvm  { background: rgba(63,185,80,.12);  color: var(--accent-nvm); }
+.badge-json { background: rgba(124,107,255,.12); color: var(--accent); }
+.badge-bun  { background: rgba(244,167,56,.12);  color: var(--accent-bun); }
+
+.sidebar-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 12px;
+}
+
+/* ── CONTENT ──────────────────────────────────────────────────── */
+.content {
+  overflow-y: auto;
+  padding: 20px;
+  background: var(--bg);
+}
+
+.content::-webkit-scrollbar { width: 4px; }
+.content::-webkit-scrollbar-track { background: transparent; }
+.content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.panel { display: none; animation: fadeIn 0.2s ease; }
+.panel.active { display: block; }
+
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+
+.panel-head { margin-bottom: 18px; }
+
+.panel-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+}
+
+.npm-dot  { background: var(--accent-npm);  box-shadow: 0 0 8px var(--accent-npm); }
+.pnpm-dot { background: var(--accent-pnpm); box-shadow: 0 0 8px var(--accent-pnpm); }
+.nvm-dot  { background: var(--accent-nvm);  box-shadow: 0 0 8px var(--accent-nvm); }
+.json-dot { background: var(--accent);      box-shadow: 0 0 8px var(--accent); }
+.bun-dot  { background: var(--accent-bun);  box-shadow: 0 0 8px var(--accent-bun); }
+
+.panel-sub { font-size: 11px; color: var(--text-muted); }
+
+/* ── INPUT SECTION ────────────────────────────────────────────── */
+.input-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 18px;
+}
+
+.input-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.input-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.pkg-input {
+  flex: 1;
+  min-width: 160px;
+  background: var(--t-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 11px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.pkg-input:focus { border-color: var(--accent); }
+.pkg-input::placeholder { color: var(--text-dim); }
+
+.btn {
+  padding: 7px 14px;
+  border: none;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.btn-npm  { background: rgba(203,56,55,.15);  color: var(--accent-npm); }
+.btn-npm:hover  { background: rgba(203,56,55,.28); }
+.btn-pnpm { background: rgba(249,173,0,.15);  color: var(--accent-pnpm); }
+.btn-pnpm:hover { background: rgba(249,173,0,.28); }
+.btn-nvm  { background: rgba(63,185,80,.15);  color: var(--accent-nvm); }
+.btn-nvm:hover  { background: rgba(63,185,80,.28); }
+.btn-bun  { background: rgba(244,167,56,.15);  color: var(--accent-bun); }
+.btn-bun:hover  { background: rgba(244,167,56,.28); }
+.btn-blue { background: rgba(121,192,255,.12); color: var(--t-blue); }
+.btn-blue:hover { background: rgba(121,192,255,.22); }
+.btn-accent { background: rgba(124,107,255,.15); color: var(--accent); }
+.btn-accent:hover { background: rgba(124,107,255,.28); }
+.btn-green { background: rgba(63,185,80,.12); color: var(--t-green); }
+.btn-green:hover { background: rgba(63,185,80,.22); }
+.btn-red { background: rgba(248,81,73,.12); color: var(--t-red); }
+.btn-red:hover { background: rgba(248,81,73,.22); }
+
+.flags-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 9px;
+}
+
+.flag-toggle {
+  padding: 3px 9px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.flag-toggle:hover { border-color: var(--accent); color: var(--text); }
+.flag-toggle.on { border-color: var(--accent); background: rgba(124,107,255,.12); color: var(--accent); }
+
+/* ── SECTION TITLE ────────────────────────────────────────────── */
+.section-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* ── COMMAND GRID ─────────────────────────────────────────────── */
+.cmd-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.cmd-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 13px;
+  cursor: pointer;
+  transition: all 0.18s;
+  position: relative;
+  overflow: hidden;
+}
+
+.cmd-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.npm-card::after  { background: radial-gradient(ellipse at 50% 0%, rgba(203,56,55,.07) 0%, transparent 70%); }
+.pnpm-card::after { background: radial-gradient(ellipse at 50% 0%, rgba(249,173,0,.07) 0%, transparent 70%); }
+.nvm-card::after  { background: radial-gradient(ellipse at 50% 0%, rgba(63,185,80,.07) 0%, transparent 70%); }
+
+.cmd-card:hover { border-color: var(--border2); transform: translateY(-1px); box-shadow: 0 4px 16px var(--shadow); }
+.cmd-card:hover::after { opacity: 1; }
+.cmd-card:active { transform: none; }
+
+.cmd-name {
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+.cmd-code {
+  font-size: 11px;
+  color: var(--t-blue);
+  background: var(--t-bg);
+  padding: 5px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  margin-bottom: 7px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.cmd-desc { font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-bottom: 9px; }
+
+.run-card-btn {
+  width: 100%;
+  padding: 5px;
+  border: none;
+  border-radius: 5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+/* ── VERSION GRID ─────────────────────────────────────────────── */
+.version-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.ver-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ver-card:hover { border-color: var(--accent-nvm); }
+.ver-card.current { border-color: var(--accent-nvm); background: rgba(63,185,80,.07); }
+
+.ver-num { font-size: 18px; font-weight: 700; color: var(--t-green); margin-bottom: 3px; }
+.ver-sub { font-size: 10px; color: var(--text-muted); }
+.ver-lts { font-size: 9px; color: var(--accent-pnpm); margin-top: 3px; text-transform: uppercase; }
+
+/* ── PACKAGE.JSON EDITOR ──────────────────────────────────────── */
+.pkg-editor {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+
+.pkg-editor-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface2);
+}
+
+.pkg-editor-title {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pkg-editor-actions { display: flex; gap: 6px; }
+
+.pkg-editor-body { padding: 14px; }
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.field-group { display: flex; flex-direction: column; gap: 5px; }
+
+.field-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+
+.field-input {
+  background: var(--t-bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 6px 10px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.field-input:focus { border-color: var(--accent); }
+
+.deps-section { margin-top: 12px; }
+
+.deps-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 220px;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+
+.deps-grid::-webkit-scrollbar { width: 3px; }
+.deps-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.dep-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--surface2);
+  border-radius: 5px;
+  border: 1px solid var(--border);
+}
+
+.dep-name { flex: 1; font-size: 12px; }
+.dep-ver {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--surface3);
+  padding: 1px 7px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+}
+
+.dep-ver:hover { border-color: var(--accent); color: var(--accent); }
+
+.dep-type { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; }
+.dep-prod { color: var(--t-blue); }
+.dep-dev  { color: var(--accent-pnpm); }
+
+.dep-rm {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+  transition: color 0.15s;
+}
+
+.dep-rm:hover { color: var(--t-red); }
+
+.scripts-section { margin-top: 12px; }
+
+.script-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--surface2);
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  margin-bottom: 5px;
+}
+
+.script-name { color: var(--t-purple); font-size: 12px; min-width: 80px; }
+.script-cmd  { flex: 1; font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.script-run {
+  padding: 3px 9px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(124,107,255,.12);
+  color: var(--accent);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.script-run:hover { background: rgba(124,107,255,.25); }
+
+/* ── TERMINAL ─────────────────────────────────────────────────── */
+.terminal {
+  border-left: 1px solid var(--border);
+  background: var(--t-bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.term-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.term-dots { display: flex; gap: 5px; }
+.term-dots span { width: 9px; height: 9px; border-radius: 50%; }
+.td-r { background: #ff5f57; }
+.td-y { background: #ffbd2e; }
+.td-g { background: #28ca41; }
+
+.term-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+.term-actions { display: flex; gap: 5px; }
+
+.term-btn {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: none;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.term-btn:hover { border-color: var(--accent); color: var(--text); }
+
+.term-output {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+  font-size: 11.5px;
+  line-height: 1.65;
+}
+
+.term-output::-webkit-scrollbar { width: 3px; }
+.term-output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Terminal line types */
+.tl { display: block; word-break: break-word; }
+.tl-prompt  { color: var(--t-purple); }
+.tl-cmd     { color: var(--t-blue); font-weight: 500; }
+.tl-out     { color: var(--text); }
+.tl-err     { color: var(--t-orange); }
+.tl-ok      { color: var(--t-green); }
+.tl-fail    { color: var(--t-red); }
+.tl-sys     { color: var(--text-muted); }
+.tl-sep     { color: var(--text-dim); }
+
+.running-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--t-yellow);
+  font-size: 11px;
+}
+
+.spinner {
+  width: 10px; height: 10px;
+  border: 1.5px solid var(--t-yellow);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.kill-btn {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border: 1px solid var(--t-red);
+  border-radius: 3px;
+  background: none;
+  color: var(--t-red);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.kill-btn:hover { background: rgba(248,81,73,.15); }
+
+.term-input-row {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  background: var(--surface);
+}
+
+.term-prompt-icon { color: var(--t-purple); font-size: 11px; user-select: none; }
+
+.term-input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  outline: none;
+}
+
+.term-input::placeholder { color: var(--text-dim); }
+
+/* ── NOTIFICATIONS ────────────────────────────────────────────── */
+#notif-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.notif {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 4px 20px var(--shadow);
+  font-size: 12px;
+  max-width: 320px;
+  pointer-events: all;
+  animation: slideIn 0.25s ease;
+  transition: opacity 0.25s, transform 0.25s;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.notif.hiding { opacity: 0; transform: translateX(20px); }
+
+.notif-icon { font-size: 15px; flex-shrink: 0; }
+.notif-text { flex: 1; }
+.notif-title { font-weight: 500; margin-bottom: 1px; }
+.notif-msg { font-size: 10px; color: var(--text-muted); }
+
+.notif.success { border-color: rgba(63,185,80,.3); }
+.notif.error   { border-color: rgba(248,81,73,.3); }
+.notif.warn    { border-color: rgba(227,179,65,.3); }
+.notif.info    { border-color: rgba(121,192,255,.3); }
+
+/* ── CWD MODAL ────────────────────────────────────────────────── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 20px;
+  width: 440px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+
+.modal-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.modal-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+.modal-input {
+  width: 100%;
+  background: var(--t-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  outline: none;
+  margin-bottom: 12px;
+}
+
+.modal-input:focus { border-color: var(--accent); }
+
+.modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* ── WORKSPACE LIST ───────────────────────────────────────────── */
+.workspace-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 16px; cursor: pointer;
+  transition: background 0.15s; font-size: 11px; color: var(--text-muted);
+}
+.workspace-item:hover { background: var(--surface2); color: var(--text); }
+.workspace-item.active-ws { background: var(--surface2); color: var(--accent); }
+.workspace-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-rm {
+  background: none; border: none; color: var(--text-dim);
+  cursor: pointer; font-size: 15px; padding: 0 2px; line-height: 1;
+  opacity: 0; transition: opacity 0.15s, color 0.15s;
+}
+.workspace-item:hover .workspace-rm { opacity: 1; }
+.workspace-rm:hover { color: var(--t-red) !important; }
+.ws-add-btn {
+  background: none; border: none; color: var(--text-dim);
+  cursor: pointer; font-size: 16px; padding: 0; line-height: 1; transition: color 0.15s;
+}
+.ws-add-btn:hover { color: var(--accent); }
+.ws-empty { font-size: 10px; color: var(--text-dim); padding: 4px 16px 10px; font-style: italic; }
+
+/* ── GIT PANEL ────────────────────────────────────────────────── */
+.git-header-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 12px 16px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 10px; margin-bottom: 14px;
+}
+.git-branch-badge {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 20px; font-size: 12px;
+  border: 1px solid var(--t-green); color: var(--t-green); background: rgba(63,185,80,0.08);
+}
+.git-status-badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; border: 1px solid; }
+.git-status-badge.clean { border-color: rgba(63,185,80,.3); color: var(--t-green); }
+.git-status-badge.dirty { border-color: rgba(227,179,65,.3); color: var(--t-yellow); }
+.git-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.git-commit-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.git-commit-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 12px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 7px; font-size: 11px;
+}
+.git-commit-hash { color: var(--t-yellow); min-width: 56px; }
+.git-commit-msg { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.git-changes-list { display: flex; flex-direction: column; gap: 4px; }
+.git-change-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 12px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 6px; font-size: 11px;
+}
+.git-change-flag { font-weight: 700; min-width: 20px; text-align: center; }
+.git-flag-M { color: var(--t-yellow); }
+.git-flag-A { color: var(--t-green); }
+.git-flag-D { color: var(--t-red); }
+.git-flag-R { color: var(--t-blue); }
+.git-no-repo { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px; }
+
+/* ── SPLIT TERMINAL ───────────────────────────────────────────── */
+.term-pane { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+#term-pane-1 { flex: 1; }
+.terminal.split #term-pane-2 { display: flex; flex: 1; }
+.terminal:not(.split) #term-pane-2 { display: none; }
+.term-pane + .term-pane { border-top: 2px solid var(--border2); }
+.term-pane-label {
+  font-size: 9px; padding: 3px 14px; color: var(--text-dim); background: var(--surface2);
+  text-transform: uppercase; letter-spacing: 1.5px;
+  border-bottom: 1px solid var(--border); display: none; flex-shrink: 0;
+}
+.terminal.split .term-pane-label { display: block; }
+.split-btn.active { color: var(--accent); border-color: var(--accent); }
+
+/* ── BUN CARD ─────────────────────────────────────────────────── */
+.bun-card::after { background: radial-gradient(ellipse at 50% 0%, rgba(244,167,56,.07) 0%, transparent 70%); }
+.nav-btn[data-panel="bun"].active::before { background: var(--accent-bun); }
+
+/* ── COMMAND PALETTE ──────────────────────────────────────────── */
+.palette-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.65); z-index: 2000;
+  align-items: flex-start; justify-content: center;
+  padding-top: 80px;
+}
+.palette-overlay.open { display: flex; }
+.palette {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 14px; width: 560px; max-width: 92vw;
+  box-shadow: 0 24px 80px rgba(0,0,0,.6);
+  overflow: hidden;
+}
+.palette-input {
+  width: 100%; background: transparent;
+  border: none; border-bottom: 1px solid var(--border);
+  padding: 16px 18px; color: var(--text);
+  font-family: 'JetBrains Mono', monospace; font-size: 14px; outline: none;
+}
+.palette-input::placeholder { color: var(--text-dim); }
+.palette-results { max-height: 360px; overflow-y: auto; padding: 6px 0; }
+.palette-results::-webkit-scrollbar { width: 3px; }
+.palette-results::-webkit-scrollbar-thumb { background: var(--border); }
+.palette-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 18px; cursor: pointer; transition: background 0.1s;
+  font-size: 12px; color: var(--text-muted);
+}
+.palette-item:hover, .palette-item.selected {
+  background: var(--surface2); color: var(--text);
+}
+.palette-item-icon { font-size: 14px; min-width: 20px; text-align: center; }
+.palette-item-label { flex: 1; }
+.palette-item-type {
+  font-size: 9px; padding: 2px 6px; border-radius: 3px;
+  background: var(--surface3); color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.palette-empty { text-align: center; padding: 24px; color: var(--text-dim); font-size: 12px; }
+.palette-hint {
+  padding: 8px 18px; border-top: 1px solid var(--border);
+  font-size: 10px; color: var(--text-dim);
+  display: flex; gap: 16px;
+}
+.palette-hint kbd {
+  background: var(--surface3); border: 1px solid var(--border2);
+  border-radius: 3px; padding: 1px 5px; font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── QUICK RUN FAVORITES ──────────────────────────────────────── */
+.fav-item {
+  display: flex; align-items: center;
+  padding: 5px 16px 5px 8px; font-size: 11px;
+  color: var(--text-muted); transition: background 0.15s;
+}
+.fav-item:hover { background: var(--surface2); color: var(--text); }
+.fav-run { flex: 1; background: none; border: none; cursor: pointer;
+  text-align: left; color: inherit; font-family: inherit; font-size: inherit;
+  display: flex; align-items: center; gap: 8px; padding: 2px 0;
+}
+.fav-rm {
+  background: none; border: none; color: var(--text-dim);
+  cursor: pointer; font-size: 14px; opacity: 0; transition: opacity 0.15s;
+  padding: 0 2px;
+}
+.fav-item:hover .fav-rm { opacity: 1; }
+.fav-rm:hover { color: var(--t-red) !important; }
+.fav-add-row {
+  padding: 6px 16px; display: flex; gap: 6px;
+}
+.fav-add-input {
+  flex: 1; background: var(--t-bg); border: 1px solid var(--border);
+  border-radius: 4px; padding: 4px 8px; color: var(--text);
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; outline: none;
+  display: none;
+}
+.fav-add-input.open { display: block; }
+.fav-add-input:focus { border-color: var(--accent); }
+
+/* ── DEPENDENCY MANAGER ───────────────────────────────────────── */
+.deps-toolbar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+.deps-filter-bar { display:flex; gap:4px; flex-wrap:wrap; }
+.deps-filter { background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer; transition:all .15s; }
+.deps-filter.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.deps-table { width:100%; border-collapse:collapse; font-size:12px; }
+.deps-table th { text-align:left; padding:7px 10px; font-size:11px; color:var(--text-dim); border-bottom:1px solid var(--border); font-weight:600; white-space:nowrap; }
+.deps-table td { padding:7px 10px; border-bottom:1px solid var(--surface2); vertical-align:middle; }
+.deps-table tr:last-child td { border-bottom:none; }
+.deps-table tr:hover td { background:var(--surface2); }
+.dep-name { font-family:monospace; color:var(--text); font-weight:500; }
+.dep-type-badge { font-size:9px; padding:2px 6px; border-radius:4px; font-weight:600; text-transform:uppercase; }
+.dep-type-badge.prod { background:rgba(63,185,80,.12); color:var(--t-green); }
+.dep-type-badge.dev  { background:rgba(79,192,255,.12); color:#4fc3f7; }
+.badge-outdated { font-size:9px; padding:2px 6px; border-radius:4px; background:rgba(255,165,0,.15); color:#ffa500; font-weight:600; }
+.badge-vuln-sm  { font-size:9px; padding:2px 6px; border-radius:4px; font-weight:600; margin-left:4px; }
+.row-outdated td { background:rgba(255,165,0,.04); }
+.row-vuln td { background:rgba(248,81,73,.05); }
+.audit-summary { display:flex; align-items:center; gap:8px; padding:10px 14px; background:rgba(248,81,73,.07); border:1px solid rgba(248,81,73,.2); border-radius:8px; margin-bottom:14px; flex-wrap:wrap; font-size:12px; }
+.sev-badge { font-size:10px; padding:2px 7px; border-radius:4px; font-weight:600; }
+.sev-critical { background:rgba(160,12,12,.25); color:#ff6b6b; }
+.sev-high     { background:rgba(248,81,73,.20); color:var(--t-red); }
+.sev-moderate { background:rgba(255,165,0,.20); color:#ffa500; }
+.sev-low      { background:rgba(255,255,0,.12); color:#e5c07b; }
+
+/* ── PROCESS MONITOR ──────────────────────────────────────────── */
+.proc-name { font-family:monospace; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.proc-high td { background:rgba(248,81,73,.04); }
+
+/* ── LOG VIEWER ───────────────────────────────────────────────── */
+.log-toolbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+.log-filter-bar { display:flex; gap:4px; }
+.log-filter { background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); border-radius:6px; padding:3px 9px; font-size:11px; cursor:pointer; transition:all .15s; }
+.log-filter.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.log-viewer { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px; height:360px; overflow-y:auto; font-family:monospace; font-size:11px; line-height:1.6; }
+.log-line { white-space:pre-wrap; word-break:break-all; color:var(--text-muted); }
+.log-line.log-err  { color:var(--t-red); }
+.log-line.log-warn { color:#ffa500; }
+.log-line.log-info { color:var(--t-green); }
+
+/* ── COMMAND HISTORY ──────────────────────────────────────────── */
+.count-badge { display:inline-block; min-width:16px; padding:0 4px; border-radius:8px; background:rgba(248,81,73,.18); color:var(--t-red); font-size:9px; font-weight:700; text-align:center; margin-left:4px; }
+.count-badge.vuln { background:rgba(248,81,73,.25); }
+
+/* ── DRAG & DROP SORTABLE CARDS ───────────────────────────────── */
+.cmd-card[draggable="true"] { cursor: grab; user-select: none; }
+.cmd-card[draggable="true"]:active { cursor: grabbing; }
+.cmd-card.dragging { opacity: 0.25; border-style: dashed; transform: scale(0.97); }
+.cmd-card.drag-over {
+  border-color: var(--accent);
+  background: var(--surface2);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.cmd-card::before {
+  content: '⠿';
+  position: absolute;
+  top: 6px; right: 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+.cmd-card[draggable="true"]:hover::before { opacity: 1; }
+
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⬡</div>
+      Node<span>Ctrl</span>
+    </div>
+    <div class="header-right">
+      <div class="conn-badge" id="conn-badge">
+        <div class="conn-dot"></div>
+        <span id="conn-text">Connecting…</span>
+      </div>
+      <div class="cwd-display" id="cwd-display" onclick="openCwdModal()" title="Click to change directory">
+        loading…
+      </div>
+      <button class="icon-btn" onclick="toggleTheme()" id="theme-btn" title="Toggle theme">🌙</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-scroll">
+        <div class="sidebar-section">
+          <div class="sidebar-label" style="display:flex;align-items:center;justify-content:space-between;padding-right:10px">
+            Workspaces
+            <button class="ws-add-btn" onclick="addWorkspace()" title="Save current directory as workspace">+</button>
+          </div>
+          <div id="workspace-list">
+            <div class="ws-empty">No saved workspaces</div>
+          </div>
+        </div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-section">
+          <div class="sidebar-label">Package Managers</div>
+          <button class="nav-btn active" data-panel="npm" onclick="switchPanel('npm')">
+            <span>📦</span> npm
+            <span class="nav-badge badge-npm">v10</span>
+          </button>
+          <button class="nav-btn" data-panel="pnpm" onclick="switchPanel('pnpm')">
+            <span>⚡</span> pnpm
+            <span class="nav-badge badge-pnpm">v8</span>
+          </button>
+          <button class="nav-btn" data-panel="bun" onclick="switchPanel('bun')">
+            <span>🍞</span> bun
+            <span class="nav-badge badge-bun">fast</span>
+          </button>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-label">Node Manager</div>
+          <button class="nav-btn" data-panel="nvm" onclick="switchPanel('nvm')">
+            <span>🔧</span> nvm
+            <span class="nav-badge badge-nvm">v0.39</span>
+          </button>
+        </div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-section">
+          <div class="sidebar-label">Project</div>
+          <button class="nav-btn" data-panel="pkgjson" onclick="switchPanel('pkgjson')">
+            <span>📝</span> package.json
+            <span class="nav-badge badge-json">edit</span>
+          </button>
+        </div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-section">
+          <div class="sidebar-label">Dev Tools</div>
+          <button class="nav-btn" data-panel="git" onclick="switchPanel('git')">
+            <span>🌿</span> Git
+            <span class="nav-badge" style="background:rgba(63,185,80,.12);color:var(--t-green)">status</span>
+          </button>
+          <button class="nav-btn" data-panel="scanner" onclick="switchPanel('scanner')">
+            <span>🔭</span> Project
+            <span class="nav-badge" style="background:rgba(255,165,0,.12);color:#ffa500">scan</span>
+          </button>
+          <button class="nav-btn" data-panel="enveditor" onclick="switchPanel('enveditor')">
+            <span>🔑</span> .env Editor
+            <span class="nav-badge" style="background:rgba(63,185,80,.12);color:var(--t-green)">env</span>
+          </button>
+          <button class="nav-btn" data-panel="ports" onclick="switchPanel('ports')">
+            <span>🔌</span> Ports
+            <span class="nav-badge" style="background:rgba(248,81,73,.12);color:var(--t-red)">live</span>
+          </button>
+          <button class="nav-btn" data-panel="nodemon" onclick="switchPanel('nodemon')">
+            <span>👁</span> nodemon
+            <span class="nav-badge" style="background:rgba(255,165,0,.12);color:#ffa500">watch</span>
+          </button>
+          <button class="nav-btn" data-panel="ncu" onclick="switchPanel('ncu')">
+            <span>⬆</span> ncu
+            <span class="nav-badge" style="background:rgba(79,192,255,.12);color:#4fc3f7">updates</span>
+          </button>
+          <button class="nav-btn" data-panel="deps" onclick="switchPanel('deps')">
+            <span>📋</span> Dependencies
+            <span class="nav-badge" id="deps-nav-badge" style="background:rgba(255,165,0,.12);color:#ffa500">check</span>
+          </button>
+          <button class="nav-btn" data-panel="monitor" onclick="switchPanel('monitor')">
+            <span>📊</span> Processes
+            <span class="nav-badge" style="background:rgba(248,81,73,.12);color:var(--t-red)">live</span>
+          </button>
+          <button class="nav-btn" data-panel="logs" onclick="switchPanel('logs')">
+            <span>📄</span> Log Viewer
+            <span class="nav-badge" style="background:rgba(79,192,255,.12);color:#4fc3f7">tail</span>
+          </button>
+          <button class="nav-btn" data-panel="history" onclick="switchPanel('history')">
+            <span>🕐</span> History
+            <span class="nav-badge" id="hist-nav-badge" style="background:rgba(155,155,155,.15);color:var(--text-muted)">0</span>
+          </button>
+        </div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-section">
+          <div class="sidebar-label" style="display:flex;align-items:center;justify-content:space-between;padding-right:10px">
+            Quick Run
+            <button class="ws-add-btn" onclick="toggleFavInput()" title="Pin a command">+</button>
+          </div>
+          <div id="fav-list"></div>
+          <div class="fav-add-row">
+            <input class="fav-add-input" id="fav-input" placeholder="command to pin…" onkeydown="favInputKey(event)" />
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CONTENT -->
+    <main class="content">
+
+      <!-- ── NPM PANEL ── -->
+      <div class="panel active" id="panel-npm">
+        <div class="panel-head">
+          <div class="panel-title"><div class="dot npm-dot"></div>npm</div>
+          <div class="panel-sub">Node Package Manager — manage dependencies and scripts</div>
+        </div>
+
+        <div class="input-section">
+          <div class="input-label">Install Package</div>
+          <div class="input-row">
+            <input class="pkg-input" id="npm-pkg" placeholder="axios, react@18, lodash@latest…" />
+            <button class="btn btn-npm" onclick="npmInstall()">↓ Install</button>
+            <button class="btn btn-blue" onclick="npmInstallDev()">↓ --save-dev</button>
+            <button class="btn btn-red" onclick="npmUninstall()">✕ Remove</button>
+          </div>
+          <div class="flags-row">
+            <button class="flag-toggle" data-flag="--global">--global</button>
+            <button class="flag-toggle" data-flag="--save-exact">--save-exact</button>
+            <button class="flag-toggle" data-flag="--legacy-peer-deps">--legacy-peer-deps</button>
+            <button class="flag-toggle" data-flag="--force">--force</button>
+            <button class="flag-toggle" data-flag="--dry-run">--dry-run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Common Commands</div>
+        <div class="cmd-grid">
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Install Dependencies</div>
+            <div class="cmd-code">npm install</div>
+            <div class="cmd-desc">Install all packages from package.json</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm install')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Update Packages</div>
+            <div class="cmd-code">npm update</div>
+            <div class="cmd-desc">Update packages to latest semver version</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm update')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Security Audit</div>
+            <div class="cmd-code">npm audit</div>
+            <div class="cmd-desc">Check for known security vulnerabilities</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm audit')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Fix Vulnerabilities</div>
+            <div class="cmd-code">npm audit fix</div>
+            <div class="cmd-desc">Auto-fix security issues where possible</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm audit fix')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">List Outdated</div>
+            <div class="cmd-code">npm outdated</div>
+            <div class="cmd-desc">Show packages with newer versions available</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm outdated')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">List Installed</div>
+            <div class="cmd-code">npm list --depth=0</div>
+            <div class="cmd-desc">Show all top-level installed packages</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm list --depth=0')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Clean Cache</div>
+            <div class="cmd-code">npm cache clean --force</div>
+            <div class="cmd-desc">Clear npm cache directory completely</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm cache clean --force')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Check npm Version</div>
+            <div class="cmd-code">npm --version</div>
+            <div class="cmd-desc">Display current npm version</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm --version')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Scripts</div>
+        <div class="cmd-grid">
+          <div class="cmd-card npm-card">
+            <div class="cmd-code">npm run dev</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm run dev')">▶ Dev Server</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-code">npm run build</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm run build')">▶ Build</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-code">npm run test</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm run test')">▶ Test</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-code">npm run lint</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm run lint')">▶ Lint</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PNPM PANEL ── -->
+      <div class="panel" id="panel-pnpm">
+        <div class="panel-head">
+          <div class="panel-title"><div class="dot pnpm-dot"></div>pnpm</div>
+          <div class="panel-sub">Performant npm — faster, disk-efficient with content-addressable store · <span style="color:var(--text-dim)">drag cards to reorder</span></div>
+        </div>
+
+        <div class="input-section">
+          <div class="input-label">Package Operations</div>
+          <div class="input-row">
+            <input class="pkg-input" id="pnpm-pkg" placeholder="vite, typescript, tailwindcss…" />
+            <button class="btn btn-pnpm" onclick="pnpmAdd()">↓ add</button>
+            <button class="btn btn-blue" onclick="pnpmAddDev()">↓ -D dev</button>
+            <button class="btn btn-blue" onclick="pnpmAddOptional()">↓ -O optional</button>
+            <button class="btn btn-red" onclick="pnpmRemove()">✕ remove</button>
+          </div>
+          <div class="input-row" style="margin-top:7px">
+            <input class="pkg-input" id="pnpm-pkg2" placeholder="package to inspect (why, link…)" style="max-width:260px" />
+            <button class="btn btn-accent" onclick="pnpmWhy()">? why</button>
+            <button class="btn btn-blue" onclick="pnpmDlx()">⚡ dlx</button>
+            <button class="btn btn-blue" onclick="pnpmLink()">🔗 link</button>
+          </div>
+          <div class="flags-row">
+            <button class="flag-toggle" data-flag="-g">-g global</button>
+            <button class="flag-toggle" data-flag="-E">-E exact</button>
+            <button class="flag-toggle" data-flag="--workspace-root">--workspace-root</button>
+            <button class="flag-toggle" data-flag="--frozen-lockfile">--frozen-lockfile</button>
+            <button class="flag-toggle" data-flag="--prefer-offline">--prefer-offline</button>
+            <button class="flag-toggle" data-flag="--ignore-scripts">--ignore-scripts</button>
+          </div>
+        </div>
+
+        <div class="section-title">Scripts</div>
+        <div class="cmd-grid" id="pnpm-grid-scripts">
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Dev Server</div>
+            <div class="cmd-code">pnpm dev</div>
+            <div class="cmd-desc">Start development server</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm dev')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Build</div>
+            <div class="cmd-code">pnpm build</div>
+            <div class="cmd-desc">Compile and bundle for production</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm build')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Preview</div>
+            <div class="cmd-code">pnpm preview</div>
+            <div class="cmd-desc">Preview production build locally</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm preview')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Test</div>
+            <div class="cmd-code">pnpm test</div>
+            <div class="cmd-desc">Run test suite</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm test')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Lint</div>
+            <div class="cmd-code">pnpm lint</div>
+            <div class="cmd-desc">Run linter on source files</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm lint')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Start</div>
+            <div class="cmd-code">pnpm start</div>
+            <div class="cmd-desc">Start production server</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm start')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Type Check</div>
+            <div class="cmd-code">pnpm typecheck</div>
+            <div class="cmd-desc">Run TypeScript type checking</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm typecheck')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Format</div>
+            <div class="cmd-code">pnpm format</div>
+            <div class="cmd-desc">Auto-format code with Prettier</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm format')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Package Management</div>
+        <div class="cmd-grid" id="pnpm-grid-pkg">
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Install</div>
+            <div class="cmd-code">pnpm install</div>
+            <div class="cmd-desc">Install all deps from lockfile</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm install')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Install (CI)</div>
+            <div class="cmd-code">pnpm install --frozen-lockfile</div>
+            <div class="cmd-desc">Strict install — fail if lockfile is outdated</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm install --frozen-lockfile')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Update (semver)</div>
+            <div class="cmd-code">pnpm update</div>
+            <div class="cmd-desc">Update within semver range</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm update')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Update (latest)</div>
+            <div class="cmd-code">pnpm update --latest</div>
+            <div class="cmd-desc">Upgrade all packages to absolute latest</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm update --latest')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Outdated</div>
+            <div class="cmd-code">pnpm outdated</div>
+            <div class="cmd-desc">Show packages with newer versions available</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm outdated')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">List (top)</div>
+            <div class="cmd-code">pnpm list --depth 0</div>
+            <div class="cmd-desc">Show top-level installed packages only</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm list --depth 0')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">List (all)</div>
+            <div class="cmd-code">pnpm list --depth Infinity</div>
+            <div class="cmd-desc">Show full dependency tree</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm list --depth Infinity')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">List (global)</div>
+            <div class="cmd-code">pnpm list -g --depth 0</div>
+            <div class="cmd-desc">Show globally installed packages</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm list -g --depth 0')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Dedupe</div>
+            <div class="cmd-code">pnpm dedupe</div>
+            <div class="cmd-desc">Remove duplicate packages in lockfile</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm dedupe')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Rebuild</div>
+            <div class="cmd-code">pnpm rebuild</div>
+            <div class="cmd-desc">Rebuild all packages with native addons</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm rebuild')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Audit</div>
+            <div class="cmd-code">pnpm audit</div>
+            <div class="cmd-desc">Check for known security vulnerabilities</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm audit')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Audit Fix</div>
+            <div class="cmd-code">pnpm audit --fix</div>
+            <div class="cmd-desc">Auto-fix vulnerabilities where possible</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm audit --fix')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Execute &amp; Publish</div>
+        <div class="cmd-grid" id="pnpm-grid-exec">
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">dlx (npx equiv)</div>
+            <div class="cmd-code">pnpm dlx &lt;pkg&gt;</div>
+            <div class="cmd-desc">Run a package without installing it</div>
+            <button class="run-card-btn btn-pnpm" onclick="pnpmDlx()">⚡ dlx</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Create Project</div>
+            <div class="cmd-code">pnpm create vite</div>
+            <div class="cmd-desc">Scaffold new project via create-* template</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm create vite')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Pack</div>
+            <div class="cmd-code">pnpm pack</div>
+            <div class="cmd-desc">Create a tarball of the package</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm pack')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Publish</div>
+            <div class="cmd-code">pnpm publish</div>
+            <div class="cmd-desc">Publish package to npm registry</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm publish')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Publish (dry run)</div>
+            <div class="cmd-code">pnpm publish --dry-run</div>
+            <div class="cmd-desc">Preview publish without actually publishing</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm publish --dry-run')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Link (local)</div>
+            <div class="cmd-code">pnpm link --global</div>
+            <div class="cmd-desc">Link current package globally for local dev</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm link --global')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Unlink</div>
+            <div class="cmd-code">pnpm unlink</div>
+            <div class="cmd-desc">Remove global symlink for current package</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm unlink')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Workspace (Monorepo)</div>
+        <div class="cmd-grid" id="pnpm-grid-workspace">
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Install All</div>
+            <div class="cmd-code">pnpm -r install</div>
+            <div class="cmd-desc">Install deps in all workspace packages</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm -r install')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Update All</div>
+            <div class="cmd-code">pnpm -r update</div>
+            <div class="cmd-desc">Update deps in all workspace packages</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm -r update')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Build All</div>
+            <div class="cmd-code">pnpm -r run build</div>
+            <div class="cmd-desc">Build all packages in workspace</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm -r run build')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Test All</div>
+            <div class="cmd-code">pnpm -r run test</div>
+            <div class="cmd-desc">Run tests in all packages</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm -r run test')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Outdated All</div>
+            <div class="cmd-code">pnpm -r outdated</div>
+            <div class="cmd-desc">Check outdated packages across workspace</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm -r outdated')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Exec in All</div>
+            <div class="cmd-code">pnpm -r exec node -v</div>
+            <div class="cmd-desc">Execute command in each workspace package</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm -r exec node -v')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">List Workspace</div>
+            <div class="cmd-code">pnpm -r list --depth 0</div>
+            <div class="cmd-desc">List top-level deps in all packages</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm -r list --depth 0')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Filter Run</div>
+            <div class="cmd-code">pnpm --filter &lt;pkg&gt; run dev</div>
+            <div class="cmd-desc">Run script in a specific workspace package</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm --filter . run dev')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Store &amp; Cache</div>
+        <div class="cmd-grid" id="pnpm-grid-store">
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Store Path</div>
+            <div class="cmd-code">pnpm store path</div>
+            <div class="cmd-desc">Show location of content-addressable store</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm store path')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Store Status</div>
+            <div class="cmd-code">pnpm store status</div>
+            <div class="cmd-desc">Check store integrity and modified packages</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm store status')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Store Verify</div>
+            <div class="cmd-code">pnpm store verify</div>
+            <div class="cmd-desc">Verify store integrity, repair corrupted files</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm store verify')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Prune Store</div>
+            <div class="cmd-code">pnpm store prune</div>
+            <div class="cmd-desc">Remove unreferenced packages to free disk space</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm store prune')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Node.js via pnpm env</div>
+        <div class="cmd-grid" id="pnpm-grid-env">
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">List Versions</div>
+            <div class="cmd-code">pnpm env list --remote</div>
+            <div class="cmd-desc">List available Node.js versions</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm env list --remote')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Use LTS</div>
+            <div class="cmd-code">pnpm env use --global lts</div>
+            <div class="cmd-desc">Switch to latest LTS Node.js globally</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm env use --global lts')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Use Latest</div>
+            <div class="cmd-code">pnpm env use --global latest</div>
+            <div class="cmd-desc">Switch to latest Node.js version globally</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm env use --global latest')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Installed Versions</div>
+            <div class="cmd-code">pnpm env list</div>
+            <div class="cmd-desc">List locally installed Node.js versions</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm env list')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Config &amp; Info</div>
+        <div class="cmd-grid" id="pnpm-grid-config">
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">pnpm Version</div>
+            <div class="cmd-code">pnpm --version</div>
+            <div class="cmd-desc">Display installed pnpm version</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm --version')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Config List</div>
+            <div class="cmd-code">pnpm config list</div>
+            <div class="cmd-desc">Show all pnpm configuration values</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm config list')">▶ Run</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Set Registry</div>
+            <div class="cmd-code">pnpm config set registry &lt;url&gt;</div>
+            <div class="cmd-desc">Set custom npm registry URL</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('pnpm config get registry')">▶ Get</button>
+          </div>
+          <div class="cmd-card pnpm-card">
+            <div class="cmd-name">Node Version</div>
+            <div class="cmd-code">node --version</div>
+            <div class="cmd-desc">Show currently active Node.js version</div>
+            <button class="run-card-btn btn-pnpm" onclick="runCmd('node --version')">▶ Run</button>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ── BUN PANEL ── -->
+      <div class="panel" id="panel-bun">
+        <div class="panel-head">
+          <div class="panel-title"><div class="dot bun-dot"></div>Bun</div>
+          <div class="panel-sub">Fast all-in-one JS runtime &amp; package manager · <span style="color:var(--text-dim)">drag cards to reorder</span></div>
+        </div>
+
+        <div class="input-section">
+          <div class="input-label">Package Operations</div>
+          <div class="input-row">
+            <input class="pkg-input" id="bun-pkg" placeholder="react, vite, typescript…" />
+            <button class="btn btn-bun" onclick="bunAdd()">↓ add</button>
+            <button class="btn btn-blue" onclick="bunAddDev()">↓ -d dev</button>
+            <button class="btn btn-red" onclick="bunRemove()">✕ remove</button>
+          </div>
+          <div class="input-row" style="margin-top:7px">
+            <input class="pkg-input" id="bun-pkg2" placeholder="package for bunx / link…" style="max-width:260px" />
+            <button class="btn btn-bun" onclick="bunX()">⚡ bunx</button>
+            <button class="btn btn-blue" onclick="bunLink()">🔗 link</button>
+          </div>
+          <div class="flags-row">
+            <button class="flag-toggle" data-flag="--global">--global</button>
+            <button class="flag-toggle" data-flag="--exact">--exact</button>
+            <button class="flag-toggle" data-flag="--optional">--optional</button>
+            <button class="flag-toggle" data-flag="--peer">--peer</button>
+            <button class="flag-toggle" data-flag="--frozen-lockfile">--frozen-lockfile</button>
+          </div>
+        </div>
+
+        <div class="section-title">Scripts</div>
+        <div class="cmd-grid" id="bun-grid-scripts">
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Dev Server</div>
+            <div class="cmd-code">bun dev</div>
+            <div class="cmd-desc">Start development server</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun dev')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Build</div>
+            <div class="cmd-code">bun run build</div>
+            <div class="cmd-desc">Compile and bundle for production</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun run build')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Test</div>
+            <div class="cmd-code">bun test</div>
+            <div class="cmd-desc">Run test suite with bun's test runner</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun test')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Start</div>
+            <div class="cmd-code">bun start</div>
+            <div class="cmd-desc">Start production server</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun start')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Lint</div>
+            <div class="cmd-code">bun run lint</div>
+            <div class="cmd-desc">Run linter</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun run lint')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Run (watch)</div>
+            <div class="cmd-code">bun --watch index.ts</div>
+            <div class="cmd-desc">Run file with hot-reload on save</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun --watch index.ts')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Package Management</div>
+        <div class="cmd-grid" id="bun-grid-pkg">
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Install</div>
+            <div class="cmd-code">bun install</div>
+            <div class="cmd-desc">Install all deps (uses bun.lockb)</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun install')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Install (CI)</div>
+            <div class="cmd-code">bun install --frozen-lockfile</div>
+            <div class="cmd-desc">Strict install — fail if lockfile outdated</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun install --frozen-lockfile')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Update</div>
+            <div class="cmd-code">bun update</div>
+            <div class="cmd-desc">Update all packages to latest</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun update')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Outdated</div>
+            <div class="cmd-code">bun outdated</div>
+            <div class="cmd-desc">Show packages with newer versions available</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun outdated')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">List Packages</div>
+            <div class="cmd-code">bun pm ls</div>
+            <div class="cmd-desc">List installed packages</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun pm ls')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">List (global)</div>
+            <div class="cmd-code">bun pm ls --global</div>
+            <div class="cmd-desc">List globally installed packages</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun pm ls --global')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Cache Dir</div>
+            <div class="cmd-code">bun pm cache</div>
+            <div class="cmd-desc">Show bun package cache directory</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun pm cache')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Clear Cache</div>
+            <div class="cmd-code">bun pm cache rm</div>
+            <div class="cmd-desc">Clear the bun package cache</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun pm cache rm')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Execute &amp; Publish</div>
+        <div class="cmd-grid" id="bun-grid-exec">
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">bunx (npx)</div>
+            <div class="cmd-code">bunx &lt;pkg&gt;</div>
+            <div class="cmd-desc">Run package without installing it</div>
+            <button class="run-card-btn btn-bun" onclick="bunX()">⚡ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Create Project</div>
+            <div class="cmd-code">bunx create-vite</div>
+            <div class="cmd-desc">Scaffold new project via Vite template</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bunx create-vite')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Pack</div>
+            <div class="cmd-code">bun pm pack</div>
+            <div class="cmd-desc">Create a tarball of the package</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun pm pack')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Publish</div>
+            <div class="cmd-code">bun publish</div>
+            <div class="cmd-desc">Publish package to npm registry</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun publish')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Link (global)</div>
+            <div class="cmd-code">bun link</div>
+            <div class="cmd-desc">Link current package globally for local dev</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun link')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Upgrade Bun</div>
+            <div class="cmd-code">bun upgrade</div>
+            <div class="cmd-desc">Upgrade bun itself to the latest version</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun upgrade')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Runtime &amp; Info</div>
+        <div class="cmd-grid" id="bun-grid-info">
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Bun Version</div>
+            <div class="cmd-code">bun --version</div>
+            <div class="cmd-desc">Display installed bun version</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun --version')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Node Compat</div>
+            <div class="cmd-code">bun node --version</div>
+            <div class="cmd-desc">Show Node.js compatibility version</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun node --version')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">REPL</div>
+            <div class="cmd-code">bun repl</div>
+            <div class="cmd-desc">Start interactive Bun REPL</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun repl')">▶ Run</button>
+          </div>
+          <div class="cmd-card bun-card">
+            <div class="cmd-name">Init Project</div>
+            <div class="cmd-code">bun init</div>
+            <div class="cmd-desc">Initialize new project with package.json</div>
+            <button class="run-card-btn btn-bun" onclick="runCmd('bun init')">▶ Run</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PROJECT SCANNER PANEL ── -->
+      <div class="panel" id="panel-scanner">
+        <div class="panel-head">
+          <div class="panel-title"><div class="dot" style="background:#ffa500;box-shadow:0 0 8px #ffa500"></div>Project Scanner</div>
+          <div class="panel-sub">Auto-detect package manager, frameworks, scripts, and .env files</div>
+        </div>
+
+        <div class="input-section">
+          <div class="input-label">Project Directory</div>
+          <div class="input-row">
+            <input class="pkg-input" id="scan-dir" placeholder="Leave empty to use current working directory" />
+            <button class="btn" style="background:rgba(255,165,0,.15);color:#ffa500" onclick="scanProject()">🔭 Scan</button>
+          </div>
+        </div>
+
+        <div id="scan-result" style="display:none">
+          <!-- Project Info Card -->
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px" id="scan-info-card">
+          </div>
+
+          <!-- Script Runner -->
+          <div class="section-title">Scripts <span style="font-size:10px;color:var(--text-dim);margin-left:6px">click to run</span></div>
+          <div id="scan-scripts" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:20px"></div>
+
+          <!-- Frameworks detected -->
+          <div class="section-title">Detected Stack</div>
+          <div id="scan-frameworks" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px"></div>
+        </div>
+
+        <div id="scan-empty" style="text-align:center;padding:40px;color:var(--text-muted);font-size:12px">
+          🔭 Click Scan to analyze your project
+        </div>
+      </div>
+
+      <!-- ── ENV EDITOR PANEL ── -->
+      <div class="panel" id="panel-enveditor">
+        <div class="panel-head">
+          <div class="panel-title"><div class="dot" style="background:var(--t-green);box-shadow:0 0 8px var(--t-green)"></div>.env Editor</div>
+          <div class="panel-sub">View and edit environment variables — values hidden by default</div>
+        </div>
+
+        <div class="input-section">
+          <div class="input-label">Select .env file</div>
+          <div class="input-row">
+            <select class="pkg-input" id="env-file-select" style="cursor:pointer">
+              <option value=".env">.env</option>
+              <option value=".env.local">.env.local</option>
+              <option value=".env.development">.env.development</option>
+              <option value=".env.production">.env.production</option>
+              <option value=".env.test">.env.test</option>
+            </select>
+            <button class="btn btn-green" onclick="loadEnvFile()">📂 Load</button>
+            <button class="btn btn-accent" onclick="saveEnvFile()">💾 Save</button>
+            <button class="btn btn-blue" onclick="toggleAllEnv()" id="env-toggle-btn">👁 Show</button>
+          </div>
+        </div>
+
+        <div id="env-editor-area" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div class="section-title" style="margin:0">Variables</div>
+            <button class="btn btn-green" onclick="addEnvRow()" style="font-size:10px;padding:4px 10px">+ Add Variable</button>
+          </div>
+          <div id="env-rows" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px"></div>
+          <div style="background:var(--surface2);border-radius:6px;padding:10px;margin-top:8px">
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Raw .env preview</div>
+            <pre id="env-raw-preview" style="font-size:11px;color:var(--text-muted);white-space:pre-wrap;word-break:break-all;line-height:1.6;margin:0"></pre>
+          </div>
+        </div>
+
+        <div id="env-empty" style="text-align:center;padding:40px;color:var(--text-muted);font-size:12px">
+          🔑 Load a .env file to start editing
+        </div>
+      </div>
+
+      <!-- ── PORT MANAGER PANEL ── -->
+      <div class="panel" id="panel-ports">
+        <div class="panel-head">
+          <div class="panel-title"><div class="dot" style="background:var(--t-red);box-shadow:0 0 8px var(--t-red)"></div>Port Manager</div>
+          <div class="panel-sub">See what's running on which port — kill stuck processes instantly</div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
+          <button class="btn" style="background:rgba(248,81,73,.12);color:var(--t-red)" onclick="loadPorts()">↺ Refresh Ports</button>
+          <div style="font-size:11px;color:var(--text-muted)" id="ports-updated"></div>
+          <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+            <input class="pkg-input" id="port-kill-input" placeholder="Port number…" style="width:130px" />
+            <button class="btn btn-red" onclick="killPort()">⚡ Kill Port</button>
+          </div>
+        </div>
+
+        <!-- Dev ports highlight -->
+        <div class="section-title">Common Dev Ports</div>
+        <div id="dev-ports-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:20px"></div>
+
+        <!-- All ports table -->
+        <div class="section-title">All Active Ports</div>
+        <div id="all-ports-list" style="display:flex;flex-direction:column;gap:5px">
+          <div style="text-align:center;padding:30px;color:var(--text-muted);font-size:12px">🔌 Click Refresh to scan ports</div>
+        </div>
+      </div>
+
+      <!-- ── NODEMON PANEL ── -->
+      <div class="panel" id="panel-nodemon">
+        <div class="panel-head">
+          <div class="panel-title"><div class="dot" style="background:#ffa500;box-shadow:0 0 8px #ffa500"></div>nodemon</div>
+          <div class="panel-sub">Auto-restart Node.js app on file changes — install once, use everywhere</div>
+        </div>
+
+        <div class="input-section">
+          <div class="input-label">Run with nodemon</div>
+          <div class="input-row">
+            <input class="pkg-input" id="nodemon-entry" placeholder="server.js, index.js, app.js…" />
+            <button class="btn" style="background:rgba(255,165,0,.15);color:#ffa500" onclick="nodemonRun()">▶ Start</button>
+            <button class="btn btn-red" onclick="stopCurrent()">⏹ Stop</button>
+          </div>
+          <div class="flags-row">
+            <button class="flag-toggle" data-flag="--watch src">--watch src</button>
+            <button class="flag-toggle" data-flag="--ext js,ts,json">--ext js,ts,json</button>
+            <button class="flag-toggle" data-flag="--delay 500ms">--delay 500ms</button>
+            <button class="flag-toggle" data-flag="--ignore node_modules">--ignore node_modules</button>
+            <button class="flag-toggle" data-flag="--quiet">--quiet</button>
+          </div>
+        </div>
+
+        <div class="input-section" style="margin-bottom:18px">
+          <div class="input-label">Install nodemon</div>
+          <div class="input-row">
+            <button class="btn" style="background:rgba(255,165,0,.15);color:#ffa500" onclick="runCmd('npm install -g nodemon')">↓ npm install -g nodemon</button>
+            <button class="btn btn-pnpm" onclick="runCmd('pnpm add -g nodemon')">↓ pnpm add -g nodemon</button>
+            <button class="btn btn-blue" onclick="runCmd('nodemon --version')">? Check version</button>
+          </div>
+        </div>
+
+        <div class="section-title">nodemon Commands</div>
+        <div class="cmd-grid">
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Basic Watch</div>
+            <div class="cmd-code">nodemon server.js</div>
+            <div class="cmd-desc">Watch and restart server.js on any change</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon server.js')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Watch Specific Dir</div>
+            <div class="cmd-code">nodemon --watch src index.js</div>
+            <div class="cmd-desc">Only restart when files in /src change</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --watch src index.js')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Watch Extensions</div>
+            <div class="cmd-code">nodemon --ext js,ts,json</div>
+            <div class="cmd-desc">Restart on .js, .ts, or .json file changes</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --ext js,ts,json')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Run npm script</div>
+            <div class="cmd-code">nodemon --exec "npm run dev"</div>
+            <div class="cmd-desc">Use nodemon to run any npm script</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --exec \"npm run dev\"')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">TypeScript</div>
+            <div class="cmd-code">nodemon --exec "ts-node" app.ts</div>
+            <div class="cmd-desc">Watch and run TypeScript files directly</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --exec ts-node app.ts')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Verbose Mode</div>
+            <div class="cmd-code">nodemon --verbose server.js</div>
+            <div class="cmd-desc">Show all file watching activity</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --verbose server.js')">▶ Run</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── NCU PANEL ── -->
+      <div class="panel" id="panel-ncu">
+        <div class="panel-head">
+          <div class="panel-title"><div class="dot" style="background:#4fc3f7;box-shadow:0 0 8px #4fc3f7"></div>npm-check-updates</div>
+          <div class="panel-sub">Find newer versions of package dependencies than what is listed in package.json</div>
+        </div>
+
+        <div class="input-section" style="margin-bottom:18px">
+          <div class="input-label">Install ncu</div>
+          <div class="input-row">
+            <button class="btn btn-blue" onclick="runCmd('npm install -g npm-check-updates')">↓ npm install -g npm-check-updates</button>
+            <button class="btn btn-blue" onclick="runCmd('ncu --version')">? Check version</button>
+          </div>
+        </div>
+
+        <div class="input-section">
+          <div class="input-label">Filter by package name</div>
+          <div class="input-row">
+            <input class="pkg-input" id="ncu-filter" placeholder="react, @types/*, lodash…" />
+            <button class="btn btn-blue" onclick="ncuCheck()">🔍 Check</button>
+            <button class="btn" style="background:rgba(248,81,73,.12);color:var(--t-red)" onclick="ncuUpgrade()">⬆ Upgrade</button>
+          </div>
+          <div class="flags-row">
+            <button class="flag-toggle" data-flag="--interactive">--interactive</button>
+            <button class="flag-toggle" data-flag="--peer">--peer</button>
+            <button class="flag-toggle" data-flag="--dep prod">--dep prod</button>
+            <button class="flag-toggle" data-flag="--dep dev">--dep dev</button>
+            <button class="flag-toggle" data-flag="--target minor">--target minor</button>
+            <button class="flag-toggle" data-flag="--target patch">--target patch</button>
+          </div>
+        </div>
+
+        <div class="section-title">ncu Commands</div>
+        <div class="cmd-grid">
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Check All Updates</div>
+            <div class="cmd-code">ncu</div>
+            <div class="cmd-desc">Show all packages that have newer versions</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Upgrade package.json</div>
+            <div class="cmd-code">ncu -u</div>
+            <div class="cmd-desc">Write updated versions to package.json</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu -u')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Interactive Mode</div>
+            <div class="cmd-code">ncu --interactive</div>
+            <div class="cmd-desc">Choose which packages to upgrade</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --interactive')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Only Patch Updates</div>
+            <div class="cmd-code">ncu --target patch</div>
+            <div class="cmd-desc">Only show patch-level updates (safest)</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --target patch')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Only Minor Updates</div>
+            <div class="cmd-code">ncu --target minor</div>
+            <div class="cmd-desc">Show patch + minor updates (no breaking)</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --target minor')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Production Only</div>
+            <div class="cmd-code">ncu --dep prod</div>
+            <div class="cmd-desc">Check only production dependencies</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --dep prod')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Dev Only</div>
+            <div class="cmd-code">ncu --dep dev</div>
+            <div class="cmd-desc">Check only devDependencies</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --dep dev')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Upgrade + Install</div>
+            <div class="cmd-code">ncu -u && npm install</div>
+            <div class="cmd-desc">Update package.json then install new versions</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu -u && npm install')">▶ Run</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── NVM PANEL ── -->
+      <div class="panel" id="panel-nvm">
+        <div class="panel-head">
+          <div class="panel-title"><div class="dot nvm-dot"></div>nvm</div>
+          <div class="panel-sub">Node Version Manager — switch Node.js versions per project</div>
+        </div>
+
+        <div class="section-title">
+          Installed Versions
+          <span style="margin-left:8px;font-size:10px;color:var(--text-dim)">(click to use)</span>
+          <button class="btn btn-nvm" onclick="loadNvmVersions()" style="font-size:10px;padding:3px 10px;margin-left:8px">↺ Refresh</button>
+        </div>
+        <div class="version-grid" id="version-grid">
+          <div style="grid-column:1/-1;padding:18px;text-align:center;color:var(--text-muted);font-size:12px">
+            ⏳ Loading versions from system…
+          </div>
+        </div>
+
+        <div class="input-section">
+          <div class="input-label">Install / Switch Version</div>
+          <div class="input-row">
+            <input class="pkg-input" id="nvm-ver" placeholder="20, 18.17.0, lts/iron, latest…" />
+            <button class="btn btn-nvm" onclick="nvmInstall()">↓ Install</button>
+            <button class="btn btn-blue" onclick="nvmUse()">⇒ Use</button>
+            <button class="btn btn-red" onclick="nvmUninstall()">✕ Remove</button>
+          </div>
+        </div>
+
+        <div class="section-title">nvm Commands</div>
+        <div class="cmd-grid">
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">List Installed</div>
+            <div class="cmd-code" id="nvm-list-cmd">nvm list</div>
+            <div class="cmd-desc">Show all locally installed Node versions</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd(window._nvmListCmd||'nvm list')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">List Available</div>
+            <div class="cmd-code" id="nvm-avail-cmd">nvm list available</div>
+            <div class="cmd-desc">Browse available Node.js versions (remote)</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd(window._nvmAvailCmd||'nvm list available')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Install Latest LTS</div>
+            <div class="cmd-code">nvm install --lts</div>
+            <div class="cmd-desc">Install the latest LTS Node.js version</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm install --lts')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Use LTS</div>
+            <div class="cmd-code">nvm use --lts</div>
+            <div class="cmd-desc">Switch to latest LTS version</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm use --lts')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Set Default Version</div>
+            <div class="cmd-code" id="nvm-default-cmd">nvm use [version]</div>
+            <div class="cmd-desc">Set the active/default Node.js version</div>
+            <button class="run-card-btn btn-nvm" onclick="nvmUse()">⇒ Use Selected</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Current Version</div>
+            <div class="cmd-code" id="nvm-current-cmd">node -v</div>
+            <div class="cmd-desc">Show active Node.js version</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('node -v && nvm current')">▶ Run</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PACKAGE.JSON EDITOR ── -->
+      <div class="panel" id="panel-pkgjson">
+        <div class="panel-head">
+          <div class="panel-title"><div class="dot json-dot"></div>package.json Editor</div>
+          <div class="panel-sub">Visual editor — loads from your working directory</div>
+        </div>
+
+        <div class="pkg-editor">
+          <div class="pkg-editor-header">
+            <div class="pkg-editor-title">
+              <span>📄</span>
+              <span id="pkgjson-path">package.json</span>
+            </div>
+            <div class="pkg-editor-actions">
+              <button class="btn btn-accent" onclick="loadPkgJson()" style="font-size:10px;padding:4px 10px">↺ Reload</button>
+              <button class="btn btn-green" onclick="savePkgJson()" style="font-size:10px;padding:4px 10px">💾 Save</button>
+            </div>
+          </div>
+          <div class="pkg-editor-body" id="pkg-editor-body">
+            <div style="color:var(--text-muted);text-align:center;padding:30px;font-size:12px">
+              Connect to server to load package.json
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── GIT PANEL ── -->
+      <div class="panel" id="panel-git">
+        <div class="panel-head">
+          <div class="panel-title">
+            <div class="dot" style="background:var(--t-green);box-shadow:0 0 8px var(--t-green)"></div>Git
+          </div>
+          <div class="panel-sub">Branch status, recent commits, and quick actions</div>
+        </div>
+        <div id="git-content">
+          <div class="git-no-repo">
+            <div style="font-size:32px;margin-bottom:10px">🌿</div>
+            <div>Click Refresh to load git status</div>
+          </div>
+        </div>
+        <button class="btn btn-green" onclick="loadGit()" style="margin-top:14px">↺ Refresh</button>
+      </div>
+
+      <!-- ── DEPENDENCY MANAGER PANEL ── -->
+      <div class="panel" id="panel-deps">
+        <div class="panel-head">
+          <div class="panel-title"><div class="dot" style="background:#f97316;box-shadow:0 0 8px #f97316"></div>Dependencies</div>
+          <div class="panel-sub">Installed vs latest — outdated packages and vulnerability overview</div>
+        </div>
+        <div class="deps-toolbar">
+          <div class="deps-filter-bar">
+            <button class="deps-filter active" data-filter="all" onclick="setDepsFilter('all')">All</button>
+            <button class="deps-filter" data-filter="prod" onclick="setDepsFilter('prod')">Production</button>
+            <button class="deps-filter" data-filter="dev" onclick="setDepsFilter('dev')">Dev</button>
+            <button class="deps-filter" data-filter="outdated" onclick="setDepsFilter('outdated')">Outdated <span id="badge-outdated" class="count-badge">0</span></button>
+            <button class="deps-filter" data-filter="vulnerable" onclick="setDepsFilter('vulnerable')">Vulnerable <span id="badge-vuln" class="count-badge vuln">0</span></button>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn" style="background:rgba(63,185,80,.12);color:var(--t-green)" id="deps-update-all-btn" onclick="depsUpdateAll()">⬆ Update All Outdated</button>
+            <button class="btn btn-blue" onclick="loadDeps()">↺ Refresh</button>
+          </div>
+        </div>
+        <div id="deps-audit-summary" style="display:none"></div>
+        <div id="deps-content">
+          <div style="text-align:center;padding:40px;color:var(--text-muted)">Click Refresh to scan dependencies</div>
+        </div>
+      </div>
+
+      <!-- ── PROCESS MONITOR PANEL ── -->
+      <div class="panel" id="panel-monitor">
+        <div class="panel-head">
+          <div class="panel-title"><div class="dot" style="background:#ff7b72;box-shadow:0 0 8px #ff7b72"></div>Process Monitor</div>
+          <div class="panel-sub">CPU and memory usage — click Kill to stop any process</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap">
+          <button class="btn btn-blue" onclick="loadProcs()">↺ Refresh</button>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);cursor:pointer">
+            <input type="checkbox" id="proc-autorefresh" checked onchange="toggleProcAutoRefresh()"> Auto-refresh (3s)
+          </label>
+          <span id="proc-last-update" style="font-size:11px;color:var(--text-dim)"></span>
+        </div>
+        <div id="proc-content">
+          <div style="text-align:center;padding:40px;color:var(--text-muted)">Click Refresh or open this panel to load processes</div>
+        </div>
+      </div>
+
+      <!-- ── LOG VIEWER PANEL ── -->
+      <div class="panel" id="panel-logs">
+        <div class="panel-head">
+          <div class="panel-title"><div class="dot" style="background:#79c0ff;box-shadow:0 0 8px #79c0ff"></div>Log Viewer</div>
+          <div class="panel-sub">Tail project log files — auto-detect from current working directory</div>
+        </div>
+        <div class="log-toolbar">
+          <select class="pkg-input" id="log-file-select" onchange="loadLogContent()" style="flex:1;max-width:360px">
+            <option value="">— select a log file —</option>
+          </select>
+          <button class="btn btn-blue" onclick="refreshLogFiles()">↺ Scan</button>
+          <button class="btn" onclick="clearLogView()">✕ Clear</button>
+          <div class="log-filter-bar">
+            <button class="log-filter active" data-lf="all" onclick="setLogFilter('all')">All</button>
+            <button class="log-filter" data-lf="error" onclick="setLogFilter('error')">ERROR</button>
+            <button class="log-filter" data-lf="warn" onclick="setLogFilter('warn')">WARN</button>
+            <button class="log-filter" data-lf="info" onclick="setLogFilter('info')">INFO</button>
+          </div>
+        </div>
+        <div class="log-viewer" id="log-viewer">
+          <div style="text-align:center;padding:40px;color:var(--text-muted)">Select a log file to view its contents</div>
+        </div>
+      </div>
+
+      <!-- ── HISTORY PANEL ── -->
+      <div class="panel" id="panel-history">
+        <div class="panel-head">
+          <div class="panel-title"><div class="dot" style="background:#8b949e;box-shadow:0 0 8px #8b949e"></div>Command History</div>
+          <div class="panel-sub">All commands run — click to re-run, export as JSON</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <button class="btn btn-blue" onclick="exportHistory()">⇓ Export JSON</button>
+          <button class="btn" style="background:rgba(248,81,73,.12);color:var(--t-red)" onclick="clearHistory()">✕ Clear History</button>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);cursor:pointer">
+            <input type="checkbox" id="hist-notif-check" onchange="saveHistSettings()"> Desktop notifications
+          </label>
+        </div>
+        <div id="history-content">
+          <div style="text-align:center;padding:40px;color:var(--text-muted)">No command history yet</div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- TERMINAL -->
+    <div class="terminal" id="terminal-container">
+      <div class="term-header">
+        <div class="term-dots">
+          <span class="td-r"></span>
+          <span class="td-y"></span>
+          <span class="td-g"></span>
+        </div>
+        <div class="term-title">terminal</div>
+        <div class="term-actions">
+          <button class="term-btn split-btn" id="split-btn" onclick="toggleSplit()" title="Split terminal">⊟ split</button>
+          <button class="term-btn" onclick="stopCurrent()" id="stop-btn" style="display:none">⏹ stop</button>
+          <button class="term-btn" onclick="clearTerm()">clear</button>
+        </div>
+      </div>
+      <!-- Pane 1 -->
+      <div class="term-pane" id="term-pane-1">
+        <div class="term-pane-label">terminal 1</div>
+        <div class="term-output" id="term-out"></div>
+        <div class="term-input-row">
+          <span class="term-prompt-icon">$</span>
+          <input class="term-input" id="term-input" placeholder="type command and press Enter…"
+            onkeydown="handleInput(event)" autocomplete="off" spellcheck="false" />
+        </div>
+      </div>
+      <!-- Pane 2 -->
+      <div class="term-pane" id="term-pane-2">
+        <div class="term-pane-label" style="display:flex;align-items:center;justify-content:space-between">
+          <span>terminal 2</span>
+          <button class="term-btn" onclick="stopCurrent2()" id="stop-btn-2" style="display:none;margin-right:14px;font-size:9px">⏹ stop</button>
+        </div>
+        <div class="term-output" id="term-out-2"></div>
+        <div class="term-input-row">
+          <span class="term-prompt-icon" style="color:var(--t-blue)">$</span>
+          <input class="term-input" id="term-input-2" placeholder="terminal 2 — type command and press Enter…"
+            onkeydown="handleInput2(event)" autocomplete="off" spellcheck="false" />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICATIONS -->
+<div id="notif-container"></div>
+
+<!-- COMMAND PALETTE -->
+<div class="palette-overlay" id="palette-overlay" onclick="if(event.target===this)closePalette()">
+  <div class="palette">
+    <input class="palette-input" id="palette-input"
+      placeholder="Search panels, commands, workspaces… or type any command"
+      oninput="filterPalette(this.value)"
+      onkeydown="paletteKey(event)"
+      autocomplete="off" spellcheck="false" />
+    <div class="palette-results" id="palette-results"></div>
+    <div class="palette-hint">
+      <span><kbd>↑↓</kbd> navigate</span>
+      <span><kbd>Enter</kbd> execute</span>
+      <span><kbd>Esc</kbd> close</span>
+      <span><kbd>Ctrl+K</kbd> anywhere</span>
+    </div>
+  </div>
+</div>
+
+<!-- CWD MODAL -->
+<div class="modal-overlay" id="cwd-modal">
+  <div class="modal">
+    <div class="modal-title">Change Working Directory</div>
+    <div class="modal-label">Directory path</div>
+    <input class="modal-input" id="cwd-input" placeholder="/home/user/my-project" />
+    <div class="modal-btns">
+      <button class="btn" style="background:var(--surface2);color:var(--text-muted)" onclick="closeCwdModal()">Cancel</button>
+      <button class="btn btn-accent" onclick="setCwd()">Change Directory</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────
+let ws = null;
+let wsReady = false;
+let currentCwd = '';   // empty = server uses its own process.cwd()
+let pkgJsonData = null;
+let cmdId = 0;
+let currentRunId = null;
+let cmdHistory = [];
+let historyIdx = -1;
+let pendingOutput = {}; // id -> accumulated text
+const paneMap = new Map(); // cmdId -> pane number (1 or 2)
+
+// ── WEBSOCKET ──────────────────────────────────────────────────────
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const url = `${proto}://${location.host}`;
+  ws = new WebSocket(url);
+
+  ws.onopen = () => {
+    wsReady = true;
+    setConnected(true);
+  };
+
+  ws.onclose = () => {
+    wsReady = false;
+    setConnected(false);
+    setTimeout(connectWS, 3000);
+  };
+
+  ws.onerror = () => {
+    wsReady = false;
+    setConnected(false);
+  };
+
+  ws.onmessage = (e) => {
+    let msg;
+    try { msg = JSON.parse(e.data); } catch(err) { return; }
+    handleMsg(msg);
+  };
+}
+
+function handleMsg(msg) {
+  const pane = paneMap.get(msg.id) || 1;
+  const addLine = pane === 2 ? addTermLine2 : addTermLine;
+  const appendOut = pane === 2 ? appendOutput2 : appendOutput;
+
+  switch(msg.type) {
+    case 'system':
+      addTermLine('tl-sys', '⬡ ' + msg.text);
+      addTermLine('tl-sep', '─'.repeat(48));
+      if (msg.cwd) {
+        const savedCwd = localStorage.getItem('nc-cwd');
+        if (savedCwd && savedCwd !== msg.cwd) {
+          // Restore saved working directory to the server
+          ws.send(JSON.stringify({ type: 'cwd', dir: savedCwd }));
+        } else {
+          currentCwd = msg.cwd;
+          document.getElementById('cwd-display').textContent = msg.cwd;
+          document.getElementById('cwd-input').value = msg.cwd;
+        }
+      }
+      break;
+
+    case 'start':
+      addLine('', '');
+      addLine('tl-sys', `<span style="color:var(--text-dim)">┌─</span> <span style="color:var(--text-muted)">cwd:</span> <span style="color:var(--text-dim)">${escHtml(msg.cwd||'')}</span>`);
+      addLine('tl-sys', `<span style="color:var(--t-purple)">$</span> <span class="tl-cmd">${escHtml(msg.cmd)}</span>`);
+      if (pane === 2) {
+        currentRunId2 = msg.id;
+        document.getElementById('stop-btn-2').style.display = '';
+      } else {
+        currentRunId = msg.id;
+        document.getElementById('stop-btn').style.display = '';
+      }
+      break;
+
+    case 'stdout': appendOut(msg.id, msg.text, 'tl-out'); break;
+    case 'stderr': appendOut(msg.id, msg.text, 'tl-err'); break;
+
+    case 'done':
+      paneMap.delete(msg.id);
+      if (pane === 2) {
+        currentRunId2 = null;
+        document.getElementById('stop-btn-2').style.display = 'none';
+      } else {
+        currentRunId = null;
+        document.getElementById('stop-btn').style.display = 'none';
+      }
+      if (msg.success) {
+        addLine('tl-sys', `<span style="color:var(--text-dim)">└─</span> <span style="color:var(--t-green)">✓ exited 0</span>`);
+        notify('success', 'Done', msg.cmd || 'Command completed');
+        addHistEntry({ ts: Date.now(), cmd: msg.cmd || '', status: 'success', code: 0 });
+        sendDesktopNotif('✓ Done', msg.cmd || 'Command completed');
+      } else {
+        addLine('tl-sys', `<span style="color:var(--text-dim)">└─</span> <span style="color:var(--t-red)">✗ exited ${msg.code}${msg.signal ? ' ('+msg.signal+')' : ''}</span>`);
+        notify('error', 'Failed (code ' + msg.code + ')', msg.cmd || '');
+        addHistEntry({ ts: Date.now(), cmd: msg.cmd || '', status: 'failed', code: msg.code });
+        sendDesktopNotif('✗ Failed', msg.cmd || '');
+      }
+      break;
+
+    case 'killed':
+      paneMap.delete(msg.id);
+      if (pane === 2) {
+        currentRunId2 = null;
+        document.getElementById('stop-btn-2').style.display = 'none';
+      } else {
+        currentRunId = null;
+        document.getElementById('stop-btn').style.display = 'none';
+      }
+      addLine('tl-sys', '⏹ Process killed');
+      notify('warn', 'Process stopped', 'Killed by user');
+      addHistEntry({ ts: Date.now(), cmd: '', status: 'killed', code: null });
+      break;
+
+    case 'error':
+      addLine('tl-fail', '✗ ' + escHtml(msg.text));
+      notify('error', 'Error', msg.text);
+      break;
+
+    case 'cwd_ok':
+      currentCwd = msg.dir;
+      document.getElementById('cwd-display').textContent = msg.dir;
+      document.getElementById('cwd-input').value = msg.dir;
+      localStorage.setItem('nc-cwd', msg.dir);
+      notify('info', 'Directory changed', msg.dir);
+      renderWorkspaces();
+      break;
+  }
+}
+
+function setConnected(ok) {
+  const badge = document.getElementById('conn-badge');
+  const txt = document.getElementById('conn-text');
+  if (ok) {
+    badge.classList.add('connected');
+    txt.textContent = 'Connected';
+  } else {
+    badge.classList.remove('connected');
+    txt.textContent = 'Disconnected';
+  }
+}
+
+// ── TERMINAL ───────────────────────────────────────────────────────
+const termOut = () => document.getElementById('term-out');
+
+function addTermLine(cls, html) {
+  const el = document.createElement('span');
+  el.className = 'tl ' + cls;
+  el.innerHTML = html + '\n';
+  termOut().appendChild(el);
+  termOut().scrollTop = termOut().scrollHeight;
+}
+
+function appendOutput(id, text, cls) {
+  // Strip ANSI escape codes
+  const clean = text
+    .replace(/\x1b\[[0-9;]*[mGKHF]/g, '')
+    .replace(/\x1b\[[A-Z]/g, '')
+    .replace(/\r/g, '');
+
+  const lines = clean.split('\n');
+  lines.forEach((line, i) => {
+    if (i === lines.length - 1 && line === '') return;
+    const rendered = renderLine(line, cls);
+    addTermLine(rendered.cls, rendered.html);
+  });
+}
+
+// Smart line renderer — colorize based on content patterns
+function renderLine(line, defaultCls) {
+  const t = line.trim();
+
+  // Empty line
+  if (t === '') return { cls: '', html: '' };
+
+  // ── nvm list (installed) ──
+  // "  * 22.22.1 (Currently using 64-bit executable)"
+  if (/\*\s+[\d.]+/.test(t)) {
+    const ver = t.match(/([\d.]+)/)?.[1] || '';
+    return { cls: 'tl-ok', html: `<span style="color:var(--t-green)">●</span> <strong>${escHtml(ver)}</strong> <span style="color:var(--text-muted)">(active)</span>` };
+  }
+  // "    24.14.0"  installed but not active
+  if (/^\d+\.\d+\.\d+$/.test(t)) {
+    const major = t.split('.')[0];
+    return { cls: 'tl-out', html: `<span style="color:var(--text-dim)">○</span> <span style="color:var(--t-blue)">${escHtml(t)}</span>` };
+  }
+
+  // ── nvm list available — table rows ──
+  // "| 25.8.0 | 24.14.0 | 0.12.18 | 0.11.16 |"
+  if (t.startsWith('|') && t.endsWith('|')) {
+    const cells = t.split('|').map(c => c.trim()).filter(c => c.length > 0);
+    if (cells.length === 0) return { cls: 'tl-sep', html: '─'.repeat(56) };
+
+    // Header row
+    if (cells.some(c => /CURRENT|LTS|STABLE/i.test(c))) {
+      const hdrs = cells.map(c => `<span style="color:var(--t-purple);font-weight:600;min-width:80px;display:inline-block;text-align:center">${escHtml(c)}</span>`);
+      return { cls: '', html: hdrs.join(' <span style="color:var(--border2)">│</span> ') };
+    }
+
+    // Separator row "|----|"
+    if (cells.every(c => /^[-]+$/.test(c))) {
+      return { cls: 'tl-sep', html: '─'.repeat(56) };
+    }
+
+    // Data row — color each column differently
+    const colors = ['var(--t-blue)', 'var(--t-green)', 'var(--text-muted)', 'var(--text-dim)'];
+    const cols = cells.map((c, i) => {
+      const color = colors[i] || 'var(--text-muted)';
+      return `<span style="color:${color};min-width:80px;display:inline-block;text-align:center">${escHtml(c)}</span>`;
+    });
+    return { cls: '', html: cols.join(' <span style="color:var(--border2)">│</span> ') };
+  }
+
+  // ── npm list tree ──
+  // "myapp@1.0.0 C:\path\to\project"
+  if (/^[\w-]+@[\d.]+/.test(t)) {
+    const [pkg, ...rest] = t.split(' ');
+    return { cls: '', html: `<span style="color:var(--t-purple)">${escHtml(pkg)}</span> <span style="color:var(--text-muted)">${escHtml(rest.join(' '))}</span>` };
+  }
+  // "├── package@version" or "`-- package@version"
+  if (/^[├└│`+\\]/.test(t)) {
+    const match = t.match(/([\w@/-]+@[\d.^~*]+)/);
+    if (match) {
+      const prefix = escHtml(t.slice(0, t.indexOf(match[1])));
+      const pkg = escHtml(match[1]);
+      return { cls: '', html: `<span style="color:var(--text-dim)">${prefix}</span><span style="color:var(--t-blue)">${pkg}</span>` };
+    }
+  }
+  // "(empty)" marker
+  if (t === '(empty)') return { cls: 'tl-sys', html: '<span style="color:var(--text-dim)">(empty — no packages installed)</span>' };
+
+  // ── npm outdated table ──
+  // "Package   Current  Wanted  Latest  Location"
+  if (/Package\s+Current\s+Wanted/i.test(t)) {
+    return { cls: '', html: `<span style="color:var(--t-purple);font-weight:600">${escHtml(t)}</span>` };
+  }
+
+  // ── warnings / notices ──
+  if (/^npm warn|^WARN/i.test(t))  return { cls: 'tl-err', html: `<span style="color:var(--t-yellow)">⚠</span> ${escHtml(t)}` };
+  if (/^npm error|^ERR!/i.test(t)) return { cls: 'tl-fail', html: `<span style="color:var(--t-red)">✗</span> ${escHtml(t)}` };
+  if (/^npm notice/i.test(t))      return { cls: 'tl-sys', html: escHtml(t) };
+
+  // ── success indicators ──
+  if (/added \d+|updated \d+|removed \d+|audited \d+/i.test(t))
+    return { cls: 'tl-ok', html: `<span style="color:var(--t-green)">✓</span> ${escHtml(t)}` };
+  if (/found 0 vulnerabilities/i.test(t))
+    return { cls: 'tl-ok', html: `<span style="color:var(--t-green)">🛡</span> ${escHtml(t)}` };
+  if (/^done in|packages: \+|progress:/i.test(t))
+    return { cls: 'tl-ok', html: `<span style="color:var(--t-green)">✓</span> ${escHtml(t)}` };
+
+  // ── ncu output ──
+  // " axios  ^1.6.5  →  ^1.7.9 "
+  if (/→/.test(t)) {
+    const parts = t.split('→');
+    const left  = escHtml(parts[0]);
+    const right = escHtml(parts[1] || '');
+    return { cls: '', html: `${left}<span style="color:var(--t-yellow)">→</span><span style="color:var(--t-green)">${right}</span>` };
+  }
+  // "All dependencies match the latest package versions :)"
+  if (/All dependencies match/i.test(t))
+    return { cls: 'tl-ok', html: `<span style="color:var(--t-green)">✓</span> ${escHtml(t)}` };
+  // "Checking .../package.json"
+  if (/^Checking/i.test(t))
+    return { cls: 'tl-sys', html: `<span style="color:var(--text-muted)">${escHtml(t)}</span>` };
+
+  // ── nodemon output ──
+  if (/\[nodemon\]/i.test(t)) {
+    if (/restarting/i.test(t))  return { cls: '', html: `<span style="color:#ffa500">↺</span> <span style="color:#ffa500">${escHtml(t)}</span>` };
+    if (/starting/i.test(t))    return { cls: '', html: `<span style="color:var(--t-green)">▶</span> <span style="color:var(--t-green)">${escHtml(t)}</span>` };
+    if (/clean exit/i.test(t))  return { cls: 'tl-ok', html: `<span style="color:var(--t-green)">✓</span> ${escHtml(t)}` };
+    if (/watching/i.test(t))    return { cls: 'tl-sys', html: `<span style="color:var(--text-muted)">👁 ${escHtml(t)}</span>` };
+    return { cls: 'tl-sys', html: `<span style="color:#ffa500">${escHtml(t)}</span>` };
+  }
+
+  // partial list footer
+  if (/^This is a partial list/i.test(t))
+    return { cls: 'tl-sys', html: `<span style="color:var(--text-muted);font-style:italic">${escHtml(t)}</span>` };
+
+  // Default
+  return { cls: defaultCls, html: escHtml(line) };
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function clearTerm() {
+  termOut().innerHTML = '';
+  addTermLine('tl-sys', '⬡ NodeCtrl — terminal cleared');
+}
+
+function stopCurrent() {
+  if (currentRunId && ws && wsReady) {
+    ws.send(JSON.stringify({ type: 'kill', id: currentRunId }));
+  }
+}
+
+// ── COMMAND RUNNER ─────────────────────────────────────────────────
+function runCmd(cmd) {
+  if (!cmd || !cmd.trim()) return;
+  if (!wsReady) {
+    notify('warn', 'Not connected', 'Server not connected. Start the server first.');
+    addTermLine('tl-err', '✗ Not connected to server');
+    return;
+  }
+  cmdId++;
+  const id = 'cmd-' + cmdId;
+  cmdHistory.unshift(cmd.trim());
+  historyIdx = -1;
+  ws.send(JSON.stringify({ type: 'run', id, cmd: cmd.trim(), cwd: currentCwd }));
+}
+
+// ── FLAG HELPERS ───────────────────────────────────────────────────
+function getFlags(container) {
+  const on = container.querySelectorAll('.flag-toggle.on');
+  return Array.from(on).map(b => b.dataset.flag).join(' ');
+}
+
+// ── NPM ACTIONS ────────────────────────────────────────────────────
+function npmInstall() {
+  const pkg = document.getElementById('npm-pkg').value.trim();
+  const flags = getFlags(document.getElementById('panel-npm'));
+  const cmd = pkg ? `npm install ${pkg} ${flags}`.trim() : `npm install ${flags}`.trim();
+  runCmd(cmd);
+}
+
+function npmInstallDev() {
+  const pkg = document.getElementById('npm-pkg').value.trim();
+  const flags = getFlags(document.getElementById('panel-npm'));
+  if (!pkg) { notify('warn', 'No package', 'Enter a package name first'); return; }
+  runCmd(`npm install --save-dev ${pkg} ${flags}`.trim());
+}
+
+function npmUninstall() {
+  const pkg = document.getElementById('npm-pkg').value.trim();
+  if (!pkg) { notify('warn', 'No package', 'Enter a package name to remove'); return; }
+  runCmd(`npm uninstall ${pkg}`);
+}
+
+// ── PNPM ACTIONS ───────────────────────────────────────────────────
+function pnpmAdd() {
+  const pkg = document.getElementById('pnpm-pkg').value.trim();
+  const flags = getFlags(document.getElementById('panel-pnpm'));
+  const cmd = pkg ? `pnpm add ${pkg} ${flags}`.trim() : `pnpm install ${flags}`.trim();
+  runCmd(cmd);
+}
+
+function pnpmAddDev() {
+  const pkg = document.getElementById('pnpm-pkg').value.trim();
+  if (!pkg) { notify('warn', 'No package', 'Enter a package name first'); return; }
+  runCmd(`pnpm add -D ${pkg}`);
+}
+
+function pnpmAddOptional() {
+  const pkg = document.getElementById('pnpm-pkg').value.trim();
+  if (!pkg) { notify('warn', 'No package', 'Enter a package name first'); return; }
+  runCmd(`pnpm add -O ${pkg}`);
+}
+
+function pnpmRemove() {
+  const pkg = document.getElementById('pnpm-pkg').value.trim();
+  if (!pkg) { notify('warn', 'No package', 'Enter a package name to remove'); return; }
+  runCmd(`pnpm remove ${pkg}`);
+}
+
+function pnpmWhy() {
+  const pkg = (document.getElementById('pnpm-pkg2').value || document.getElementById('pnpm-pkg').value).trim();
+  if (!pkg) { notify('warn', 'No package', 'Enter a package name to inspect'); return; }
+  runCmd(`pnpm why ${pkg}`);
+}
+
+function pnpmDlx() {
+  const pkg = (document.getElementById('pnpm-pkg2').value || document.getElementById('pnpm-pkg').value).trim();
+  if (!pkg) { notify('warn', 'No package', 'Enter a package name to execute'); return; }
+  runCmd(`pnpm dlx ${pkg}`);
+}
+
+function pnpmLink() {
+  const pkg = document.getElementById('pnpm-pkg2').value.trim();
+  const cmd = pkg ? `pnpm link ${pkg}` : 'pnpm link --global';
+  runCmd(cmd);
+}
+
+// ── DRAG & DROP SORTABLE CARDS ──────────────────────────────────────
+function initSortableGrids() {
+  document.querySelectorAll('.cmd-grid').forEach(grid => {
+    enableDragSort(grid);
+  });
+}
+
+function enableDragSort(grid) {
+  if (grid.dataset.sortable) return;
+  grid.dataset.sortable = '1';
+
+  let dragSrc = null;
+  let dragOver = null;
+
+  // Buttons/inputs inside cards must not be draggable (they intercept mouse events)
+  grid.querySelectorAll('.cmd-card button, .cmd-card input, .cmd-card a, .cmd-card span').forEach(el => {
+    el.setAttribute('draggable', 'false');
+  });
+  grid.querySelectorAll('.cmd-card').forEach(card => card.setAttribute('draggable', 'true'));
+
+  grid.addEventListener('dragstart', e => {
+    const card = e.target.closest('.cmd-card');
+    if (!card) return;
+    dragSrc = card;
+    card.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', 'card');
+  });
+
+  grid.addEventListener('dragend', () => {
+    if (dragSrc) dragSrc.classList.remove('dragging');
+    if (dragOver) { dragOver.classList.remove('drag-over'); dragOver = null; }
+    dragSrc = null;
+  });
+
+  grid.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const card = e.target.closest('.cmd-card');
+    if (!card || card === dragSrc) return;
+    if (card !== dragOver) {
+      if (dragOver) dragOver.classList.remove('drag-over');
+      dragOver = card;
+      card.classList.add('drag-over');
+    }
+  });
+
+  grid.addEventListener('dragleave', e => {
+    // Only clear when truly leaving the grid (not moving between child elements)
+    if (!e.relatedTarget || !grid.contains(e.relatedTarget)) {
+      if (dragOver) { dragOver.classList.remove('drag-over'); dragOver = null; }
+    }
+  });
+
+  grid.addEventListener('drop', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const target = dragOver;
+    if (target) target.classList.remove('drag-over');
+    if (dragSrc && target && dragSrc !== target) {
+      const cards = [...grid.querySelectorAll('.cmd-card')];
+      const srcIdx = cards.indexOf(dragSrc);
+      const tgtIdx = cards.indexOf(target);
+      if (srcIdx < tgtIdx) grid.insertBefore(dragSrc, target.nextSibling);
+      else grid.insertBefore(dragSrc, target);
+    }
+    dragOver = null;
+    dragSrc = null;
+  });
+}
+
+
+// ── PROJECT SCANNER ────────────────────────────────────────────────
+async function scanProject() {
+  const dir = document.getElementById('scan-dir').value.trim() || currentCwd;
+  document.getElementById('scan-result').style.display = 'none';
+  document.getElementById('scan-empty').innerHTML = '⏳ Scanning…';
+
+  try {
+    const res = await fetch(`/api/scan?dir=${encodeURIComponent(dir)}`);
+    const d = await res.json();
+    if (d.error && !d.hasPkg) {
+      document.getElementById('scan-empty').innerHTML = `✗ ${escHtml(d.error||'Could not scan directory')}`;
+      return;
+    }
+
+    document.getElementById('scan-empty').style.display = 'none';
+    document.getElementById('scan-result').style.display = 'block';
+
+    // Info card
+    const pmColors = { npm:'var(--accent-npm)', pnpm:'var(--accent-pnpm)', yarn:'#2c8ebb' };
+    const pmColor = pmColors[d.packageManager] || 'var(--text-muted)';
+    document.getElementById('scan-info-card').innerHTML = `
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700">${escHtml(d.name||'Unknown')}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">v${escHtml(d.version||'0.0.0')} · ${escHtml(d.dir)}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${d.packageManager ? `<span style="padding:4px 12px;border-radius:20px;font-size:11px;border:1px solid ${pmColor};color:${pmColor}">${d.packageManager}</span>` : ''}
+          ${d.nodeVersion ? `<span style="padding:4px 12px;border-radius:20px;font-size:11px;border:1px solid var(--t-green);color:var(--t-green)">Node ${escHtml(d.nodeVersion)}</span>` : ''}
+          ${d.hasEnv ? `<span style="padding:4px 12px;border-radius:20px;font-size:11px;border:1px solid var(--t-yellow);color:var(--t-yellow)">.env ✓</span>` : ''}
+        </div>
+      </div>
+      <div style="display:flex;gap:20px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:700;color:var(--t-blue)">${Object.keys(d.scripts).length}</div>
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase">scripts</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:700;color:var(--t-green)">${d.deps}</div>
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase">dependencies</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:700;color:var(--t-yellow)">${d.devDeps}</div>
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase">devDeps</div>
+        </div>
+        ${d.envFiles.length ? `<div style="text-align:center">
+          <div style="font-size:22px;font-weight:700;color:var(--t-purple)">${d.envFiles.length}</div>
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase">.env files</div>
+        </div>` : ''}
+      </div>`;
+
+    // Scripts as big buttons
+    const pm = d.packageManager || 'npm';
+    const runPrefix = pm === 'pnpm' ? 'pnpm run' : pm === 'yarn' ? 'yarn' : 'npm run';
+    const scriptColors = {
+      dev:'rgba(63,185,80,.12)', build:'rgba(121,192,255,.12)', test:'rgba(227,179,65,.12)',
+      start:'rgba(63,185,80,.12)', lint:'rgba(210,168,255,.12)', preview:'rgba(121,192,255,.12)'
+    };
+    const scriptTextColors = {
+      dev:'var(--t-green)', build:'var(--t-blue)', test:'var(--t-yellow)',
+      start:'var(--t-green)', lint:'var(--t-purple)', preview:'var(--t-blue)'
+    };
+    const scriptIcons = { dev:'▶', build:'⚙', test:'🧪', start:'🚀', lint:'🔍', preview:'👁', clean:'🧹' };
+    const scriptsEl = document.getElementById('scan-scripts');
+    if (Object.keys(d.scripts).length === 0) {
+      scriptsEl.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px">No scripts defined in package.json</div>';
+    } else {
+      scriptsEl.innerHTML = Object.entries(d.scripts).map(([name, cmd]) => {
+        const bg = scriptColors[name] || 'rgba(124,107,255,.08)';
+        const color = scriptTextColors[name] || 'var(--accent)';
+        const icon = scriptIcons[name] || '▶';
+        return `<button onclick="runCmd('${pm === 'yarn' ? 'yarn ' + escHtml(name) : runPrefix + ' ' + escHtml(name)}')"
+          style="background:${bg};border:1px solid var(--border);border-radius:9px;padding:12px;cursor:pointer;transition:all .15s;text-align:left"
+          onmouseover="this.style.borderColor='${color}'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:15px;margin-bottom:4px">${icon}</div>
+          <div style="color:${color};font-weight:500;font-size:12px;margin-bottom:3px">${escHtml(name)}</div>
+          <div style="color:var(--text-dim);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(cmd)}</div>
+        </button>`;
+      }).join('');
+    }
+
+    // Frameworks
+    const fwEl = document.getElementById('scan-frameworks');
+    if (d.frameworks.length === 0) {
+      fwEl.innerHTML = '<div style="color:var(--text-muted);font-size:12px">No known frameworks detected</div>';
+    } else {
+      fwEl.innerHTML = d.frameworks.map(f =>
+        `<div style="display:flex;align-items:center;gap:6px;padding:6px 14px;background:var(--surface);border:1px solid var(--border);border-radius:20px;font-size:12px">
+          <span>${f.icon}</span> ${escHtml(f.name)}
+        </div>`
+      ).join('');
+    }
+
+    notify('success', 'Project scanned', d.name || dir);
+  } catch(e) {
+    document.getElementById('scan-empty').innerHTML = `✗ ${e.message}`;
+    notify('error', 'Scan failed', e.message);
+  }
+}
+
+// ── ENV EDITOR ─────────────────────────────────────────────────────
+let envData = [];
+let envShowAll = false;
+
+function parseEnv(raw) {
+  return (raw||'').split('\n').map((line, i) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return { type: 'comment', raw: line, id: i };
+    const eq = line.indexOf('=');
+    if (eq === -1) return { type: 'other', raw: line, id: i };
+    return { type: 'var', key: line.slice(0, eq).trim(), value: line.slice(eq+1).trim(), id: i };
+  });
+}
+
+function envToRaw(rows) {
+  return rows.map(r => r.type === 'var' ? `${r.key}=${r.value}` : r.raw).join('\n');
+}
+
+async function loadEnvFile() {
+  const file = document.getElementById('env-file-select').value;
+  try {
+    const res = await fetch(`/api/env?dir=${encodeURIComponent(currentCwd)}&file=${encodeURIComponent(file)}`);
+    const d = await res.json();
+    if (!d.ok) {
+      notify('warn', 'File not found', d.path);
+      // Offer to create
+      if (confirm(`${file} not found. Create new empty file?`)) {
+        envData = [];
+        renderEnvRows();
+        document.getElementById('env-editor-area').style.display = 'block';
+        document.getElementById('env-empty').style.display = 'none';
+      }
+      return;
+    }
+    envData = parseEnv(d.content);
+    renderEnvRows();
+    document.getElementById('env-editor-area').style.display = 'block';
+    document.getElementById('env-empty').style.display = 'none';
+    notify('info', 'Loaded', file);
+  } catch(e) { notify('error', 'Error', e.message); }
+}
+
+async function saveEnvFile() {
+  const file = document.getElementById('env-file-select').value;
+  const raw = envToRaw(envData);
+  try {
+    const res = await fetch(`/api/env?dir=${encodeURIComponent(currentCwd)}&file=${encodeURIComponent(file)}`, {
+      method: 'POST',
+      body: raw
+    });
+    const d = await res.json();
+    if (d.ok) notify('success', 'Saved', file);
+    else notify('error', 'Save failed', d.error);
+  } catch(e) { notify('error', 'Error', e.message); }
+}
+
+function toggleAllEnv() {
+  envShowAll = !envShowAll;
+  document.getElementById('env-toggle-btn').textContent = envShowAll ? '🙈 Hide' : '👁 Show';
+  renderEnvRows();
+}
+
+function renderEnvRows() {
+  const rows = envData.filter(r => r.type === 'var');
+  const el = document.getElementById('env-rows');
+  el.innerHTML = rows.map((r, i) => {
+    const isSensitive = /secret|key|token|pass|pwd|auth|api/i.test(r.key);
+    const show = envShowAll || !isSensitive;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:7px">
+      <input value="${escHtml(r.key)}" onchange="updateEnvKey(${r.id}, this.value)"
+        style="width:180px;background:var(--t-bg);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--t-purple);font-family:'JetBrains Mono',monospace;font-size:11px;outline:none" />
+      <span style="color:var(--text-dim)">=</span>
+      <input value="${escHtml(r.value)}" type="${show ? 'text' : 'password'}" onchange="updateEnvVal(${r.id}, this.value)"
+        style="flex:1;background:var(--t-bg);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--t-blue);font-family:'JetBrains Mono',monospace;font-size:11px;outline:none" />
+      ${isSensitive ? '<span style="font-size:9px;color:var(--t-yellow);padding:2px 6px;border:1px solid rgba(227,179,65,.3);border-radius:3px">secret</span>' : ''}
+      <button onclick="deleteEnvRow(${r.id})" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:0 4px" 
+        onmouseover="this.style.color='var(--t-red)'" onmouseout="this.style.color='var(--text-dim)'">×</button>
+    </div>`;
+  }).join('');
+  // Raw preview
+  document.getElementById('env-raw-preview').textContent = envToRaw(envData).slice(0, 600) + (envToRaw(envData).length > 600 ? '…' : '');
+}
+
+function updateEnvKey(id, val) { const r = envData.find(r=>r.id===id); if(r) { r.key=val; updateEnvPreview(); } }
+function updateEnvVal(id, val) { const r = envData.find(r=>r.id===id); if(r) { r.value=val; updateEnvPreview(); } }
+function updateEnvPreview() { document.getElementById('env-raw-preview').textContent = envToRaw(envData).slice(0,600); }
+function deleteEnvRow(id) { envData = envData.filter(r=>r.id!==id); renderEnvRows(); }
+function addEnvRow() {
+  const newId = Date.now();
+  envData.push({ type:'var', key:'NEW_KEY', value:'', id: newId });
+  renderEnvRows();
+}
+
+// ── PORT MANAGER ───────────────────────────────────────────────────
+let portsData = [];
+
+async function loadPorts() {
+  document.getElementById('all-ports-list').innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">⏳ Scanning ports…</div>';
+  document.getElementById('dev-ports-grid').innerHTML = '';
+  try {
+    const res = await fetch('/api/ports');
+    const d = await res.json();
+    if (d.error) { notify('error', 'Port scan failed', d.error); return; }
+    portsData = d.ports || [];
+    renderPorts(portsData);
+    document.getElementById('ports-updated').textContent = `Last scanned: ${new Date().toLocaleTimeString()}`;
+    notify('info', 'Ports scanned', `${portsData.length} active ports found`);
+  } catch(e) { notify('error', 'Error', e.message); }
+}
+
+function renderPorts(ports) {
+  const devPorts = ports.filter(p => p.dev);
+  const allPorts = ports;
+
+  // Dev ports as cards
+  const devGrid = document.getElementById('dev-ports-grid');
+  if (devPorts.length === 0) {
+    devGrid.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px">No common dev ports active</div>';
+  } else {
+    devGrid.innerHTML = devPorts.map(p => `
+      <div style="background:var(--surface);border:1px solid rgba(248,81,73,.3);border-radius:9px;padding:12px;text-align:center">
+        <div style="font-size:20px;font-weight:700;color:var(--t-red);margin-bottom:3px">:${p.port}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px">PID ${p.pid||'?'} · ${p.state}</div>
+        <button onclick="killPid(${p.pid}, ${p.port})" 
+          style="width:100%;padding:5px;border:1px solid var(--t-red);border-radius:5px;background:rgba(248,81,73,.1);color:var(--t-red);font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer">
+          ⚡ Kill
+        </button>
+      </div>`).join('');
+  }
+
+  // All ports as rows
+  const list = document.getElementById('all-ports-list');
+  if (allPorts.length === 0) {
+    list.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:20px;text-align:center">No active ports found</div>';
+  } else {
+    list.innerHTML = allPorts.map(p => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface);border:1px solid ${p.dev?'rgba(248,81,73,.2)':'var(--border)'};border-radius:7px">
+        <span style="color:${p.dev?'var(--t-red)':'var(--t-blue)'};font-weight:600;min-width:60px">:${p.port}</span>
+        <span style="color:var(--text-muted);font-size:11px;flex:1">PID ${p.pid||'?'}</span>
+        <span style="font-size:9px;padding:2px 7px;border-radius:3px;background:var(--surface2);color:var(--text-muted)">${p.state}</span>
+        ${p.pid ? `<button onclick="killPid(${p.pid}, ${p.port})" 
+          style="padding:3px 10px;border:1px solid var(--border);border-radius:4px;background:none;color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer"
+          onmouseover="this.style.borderColor='var(--t-red)';this.style.color='var(--t-red)'"
+          onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">
+          ⚡ Kill
+        </button>` : ''}
+      </div>`).join('');
+  }
+}
+
+async function killPid(pid, port) {
+  if (!confirm(`Kill process on port :${port} (PID ${pid})?`)) return;
+  try {
+    const res = await fetch('/api/killpid', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pid })
+    });
+    const d = await res.json();
+    if (d.ok) {
+      notify('success', `Port :${port} freed`, `PID ${pid} killed`);
+      setTimeout(loadPorts, 800);
+    } else {
+      notify('error', 'Kill failed', d.error);
+    }
+  } catch(e) { notify('error', 'Error', e.message); }
+}
+
+async function killPort() {
+  const port = parseInt(document.getElementById('port-kill-input').value.trim());
+  if (!port) { notify('warn', 'No port', 'Enter a port number'); return; }
+  const match = portsData.find(p => p.port === port);
+  if (!match) { notify('warn', 'Port not found', `Port :${port} is not in the active list. Try Refresh first.`); return; }
+  if (!match.pid) { notify('warn', 'No PID', `Can't kill port :${port} — PID unknown`); return; }
+  killPid(match.pid, port);
+}
+
+// ── NODEMON ACTIONS ───────────────────────────────────────────────
+function nodemonRun() {
+  const entry = document.getElementById('nodemon-entry').value.trim() || 'index.js';
+  const flags = getFlags(document.getElementById('panel-nodemon'));
+  runCmd(`nodemon ${flags} ${entry}`.trim());
+}
+
+// ── NCU ACTIONS ────────────────────────────────────────────────────
+function ncuCheck() {
+  const filter = document.getElementById('ncu-filter').value.trim();
+  const flags = getFlags(document.getElementById('panel-ncu'));
+  const filterArg = filter ? `--filter "${filter}"` : '';
+  runCmd(`ncu ${flags} ${filterArg}`.trim());
+}
+
+function ncuUpgrade() {
+  const filter = document.getElementById('ncu-filter').value.trim();
+  const flags = getFlags(document.getElementById('panel-ncu'));
+  const filterArg = filter ? `--filter "${filter}"` : '';
+  runCmd(`ncu -u ${flags} ${filterArg}`.trim());
+}
+
+// ── NVM ACTIONS ────────────────────────────────────────────────────────
+function nvmInstall() {
+  const v = document.getElementById('nvm-ver').value.trim();
+  if (!v) { runCmd('nvm install --lts'); return; }
+  runCmd(`nvm install ${v}`);
+}
+
+function nvmUse() {
+  const v = document.getElementById('nvm-ver').value.trim();
+  if (!v) { notify('warn', 'No version', 'Enter a version number'); return; }
+  runCmd(`nvm use ${v}`);
+}
+
+function nvmUninstall() {
+  const v = document.getElementById('nvm-ver').value.trim();
+  if (!v) { notify('warn', 'No version', 'Enter a version to remove'); return; }
+  runCmd(`nvm uninstall ${v}`);
+}
+
+// ── PACKAGE.JSON ───────────────────────────────────────────────────
+async function loadPkgJson() {
+  if (!wsReady) { notify('warn', 'Not connected', 'Server required'); return; }
+  try {
+    const res = await fetch(`/api/pkgjson?dir=${encodeURIComponent(currentCwd)}`);
+    const data = await res.json();
+    if (data.error) {
+      notify('warn', 'No package.json', data.error);
+      document.getElementById('pkg-editor-body').innerHTML =
+        `<div style="color:var(--t-yellow);padding:20px;text-align:center;font-size:12px">⚠ ${data.error}</div>`;
+      return;
+    }
+    pkgJsonData = data;
+    renderPkgEditor(data);
+    document.getElementById('pkgjson-path').textContent = currentCwd + '/package.json';
+    notify('info', 'Loaded', 'package.json loaded successfully');
+  } catch(e) {
+    notify('error', 'Error', e.message);
+  }
+}
+
+async function savePkgJson() {
+  if (!pkgJsonData) return;
+  // Collect edited fields
+  const data = { ...pkgJsonData };
+  const nameEl = document.getElementById('pj-name');
+  const verEl = document.getElementById('pj-version');
+  const descEl = document.getElementById('pj-desc');
+  if (nameEl) data.name = nameEl.value;
+  if (verEl) data.version = verEl.value;
+  if (descEl) data.description = descEl.value;
+
+  try {
+    const res = await fetch(`/api/pkgjson?dir=${encodeURIComponent(currentCwd)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data, null, 2)
+    });
+    const result = await res.json();
+    if (result.ok) notify('success', 'Saved', 'package.json saved successfully');
+    else notify('error', 'Save failed', result.error);
+  } catch(e) {
+    notify('error', 'Error', e.message);
+  }
+}
+
+function renderPkgEditor(data) {
+  const deps = Object.entries(data.dependencies || {});
+  const devDeps = Object.entries(data.devDependencies || {});
+  const scripts = Object.entries(data.scripts || {});
+
+  const depsHtml = [...deps.map(([n, v]) =>
+    `<div class="dep-row">
+      <span class="dep-name">${escHtml(n)}</span>
+      <span class="dep-ver" onclick="updateDep('${escHtml(n)}','prod')" title="Click to update">${escHtml(v)}</span>
+      <span class="dep-type dep-prod">prod</span>
+      <button class="dep-rm" onclick="removeDep('${escHtml(n)}','prod')" title="Remove">×</button>
+    </div>`
+  ), ...devDeps.map(([n, v]) =>
+    `<div class="dep-row">
+      <span class="dep-name">${escHtml(n)}</span>
+      <span class="dep-ver" onclick="updateDep('${escHtml(n)}','dev')" title="Click to update">${escHtml(v)}</span>
+      <span class="dep-type dep-dev">dev</span>
+      <button class="dep-rm" onclick="removeDep('${escHtml(n)}','dev')" title="Remove">×</button>
+    </div>`
+  )].join('') || '<div class="tl-sys" style="padding:10px;font-size:11px">No dependencies</div>';
+
+  const scriptsHtml = scripts.map(([name, cmd]) =>
+    `<div class="script-row">
+      <span class="script-name">${escHtml(name)}</span>
+      <span class="script-cmd" title="${escHtml(cmd)}">${escHtml(cmd)}</span>
+      <button class="script-run" onclick="runCmd('npm run ${escHtml(name)}')">▶ run</button>
+    </div>`
+  ).join('') || '<div style="color:var(--text-muted);font-size:11px;padding:8px">No scripts defined</div>';
+
+  document.getElementById('pkg-editor-body').innerHTML = `
+    <div class="field-row">
+      <div class="field-group">
+        <div class="field-label">name</div>
+        <input class="field-input" id="pj-name" value="${escHtml(data.name || '')}" />
+      </div>
+      <div class="field-group">
+        <div class="field-label">version</div>
+        <input class="field-input" id="pj-version" value="${escHtml(data.version || '')}" />
+      </div>
+    </div>
+    <div class="field-group" style="margin-bottom:14px">
+      <div class="field-label">description</div>
+      <input class="field-input" id="pj-desc" value="${escHtml(data.description || '')}" />
+    </div>
+
+    <div class="deps-section">
+      <div class="section-title">Dependencies (${deps.length + devDeps.length})</div>
+      <div class="deps-grid">${depsHtml}</div>
+    </div>
+
+    <div class="scripts-section">
+      <div class="section-title">Scripts (${scripts.length})</div>
+      ${scriptsHtml}
+    </div>
+  `;
+}
+
+function updateDep(name, type) {
+  const key = type === 'dev' ? 'devDependencies' : 'dependencies';
+  const ver = prompt(`Update "${name}" — enter new version:`, pkgJsonData?.[key]?.[name] || 'latest');
+  if (ver && pkgJsonData) {
+    pkgJsonData[key][name] = ver;
+    renderPkgEditor(pkgJsonData);
+  }
+}
+
+function removeDep(name, type) {
+  if (!confirm(`Remove "${name}"?`)) return;
+  const key = type === 'dev' ? 'devDependencies' : 'dependencies';
+  if (pkgJsonData?.[key]) {
+    delete pkgJsonData[key][name];
+    renderPkgEditor(pkgJsonData);
+    notify('warn', 'Removed', `${name} removed (save to persist)`);
+  }
+}
+
+// ── NVM VERSION LOADER ─────────────────────────────────────────────
+let _nvmLoaded = false;
+
+async function loadNvmVersions() {
+  const grid = document.getElementById('version-grid');
+  grid.innerHTML = '<div style="grid-column:1/-1;padding:18px;text-align:center;color:var(--text-muted);font-size:12px">⏳ Fetching from system…</div>';
+  try {
+    const res = await fetch('/api/nvm-versions');
+    const data = await res.json();
+
+    if (data.error || !data.versions || data.versions.length === 0) {
+      grid.innerHTML = `<div style="grid-column:1/-1;padding:18px;text-align:center;color:var(--t-yellow);font-size:12px">
+        ⚠ ${data.error || 'No versions found'}<br>
+        <span style="color:var(--text-muted);font-size:11px">Make sure nvm is installed and accessible from the terminal</span>
+      </div>`;
+      return;
+    }
+
+    // Set OS-aware commands
+    const isWin = data.isWin;
+    window._nvmListCmd  = isWin ? 'nvm list' : 'nvm ls';
+    window._nvmAvailCmd = isWin ? 'nvm list available' : 'nvm ls-remote --lts';
+    if (document.getElementById('nvm-list-cmd'))
+      document.getElementById('nvm-list-cmd').textContent = window._nvmListCmd;
+    if (document.getElementById('nvm-avail-cmd'))
+      document.getElementById('nvm-avail-cmd').textContent = window._nvmAvailCmd;
+    if (document.getElementById('nvm-current-cmd'))
+      document.getElementById('nvm-current-cmd').textContent = isWin ? 'node -v' : 'node -v && nvm current';
+
+    // Update header status
+    const nodeV = data.nodeVer || '';
+    const npmV  = data.npmVer  || '';
+    if (nodeV) document.getElementById('conn-text').textContent = `Connected · Node ${nodeV} · npm ${npmV}`;
+
+    // Update sidebar badges dynamically
+    if (npmV) {
+      const npmBadge = document.querySelector('[data-panel="npm"] .nav-badge');
+      if (npmBadge) npmBadge.textContent = 'v' + npmV.split('.')[0];
+    }
+
+    // Render version cards
+    grid.innerHTML = data.versions.map(v => {
+      const major = v.version.split('.')[0];
+      const ltsLabel = v.lts ? `LTS ${v.lts}` : (parseInt(major) % 2 === 0 ? 'Even release' : 'Odd release');
+      const ltsColor = v.lts ? '' : 'style="color:var(--t-blue)"';
+      const currentMark = v.current ? ' ✓' : '';
+      const useCmd = isWin ? `nvm use ${v.version}` : `nvm use ${v.version}`;
+      return `<div class="ver-card ${v.current ? 'current' : ''}" onclick="runCmd('${useCmd}')">
+        <div class="ver-num">v${major}</div>
+        <div class="ver-sub">${v.version}</div>
+        <div class="ver-lts" ${ltsColor}>${ltsLabel}${currentMark}</div>
+      </div>`;
+    }).join('');
+
+    _nvmLoaded = true;
+    notify('success', 'NVM versions loaded', `Found ${data.versions.length} installed version(s)`);
+  } catch(e) {
+    grid.innerHTML = `<div style="grid-column:1/-1;padding:18px;text-align:center;color:var(--t-red);font-size:12px">✗ ${e.message}</div>`;
+    notify('error', 'Failed to load NVM', e.message);
+  }
+}
+
+// ── PANEL SWITCHING ────────────────────────────────────────────────
+function switchPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  const navBtn = document.querySelector(`[data-panel="${id}"]`);
+  if (navBtn) navBtn.classList.add('active');
+  localStorage.setItem('nc-panel', id);
+  if (id === 'pkgjson' && wsReady && !pkgJsonData) loadPkgJson();
+  if (id === 'nvm' && !_nvmLoaded) loadNvmVersions();
+  if (id === 'scanner') { document.getElementById('scan-dir').value = currentCwd; }
+  if (id === 'ports') loadPorts();
+  if (id === 'git') loadGit();
+  if (id === 'deps') loadDeps();
+  if (id === 'monitor') startProcMonitor();
+  else stopProcMonitor();
+  if (id === 'logs') refreshLogFiles();
+  if (id === 'history') renderHistory();
+  initSortableGrids();
+}
+
+// ── FLAG TOGGLES ───────────────────────────────────────────────────
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('flag-toggle')) {
+    e.target.classList.toggle('on');
+  }
+});
+
+// ── TERMINAL INPUT ─────────────────────────────────────────────────
+function handleInput(e) {
+  const inp = document.getElementById('term-input');
+  if (e.key === 'Enter') {
+    const val = inp.value.trim();
+    if (val) { runCmd(val); inp.value = ''; historyIdx = -1; }
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (historyIdx < cmdHistory.length - 1) inp.value = cmdHistory[++historyIdx];
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    historyIdx > 0 ? inp.value = cmdHistory[--historyIdx] : (historyIdx = -1, inp.value = '');
+  }
+}
+
+// ── CWD MODAL ──────────────────────────────────────────────────────
+function openCwdModal() {
+  document.getElementById('cwd-input').value = currentCwd;
+  document.getElementById('cwd-modal').classList.add('open');
+  setTimeout(() => document.getElementById('cwd-input').focus(), 50);
+}
+
+function closeCwdModal() {
+  document.getElementById('cwd-modal').classList.remove('open');
+}
+
+function setCwd() {
+  const dir = document.getElementById('cwd-input').value.trim();
+  if (!dir) return;
+  if (wsReady) {
+    ws.send(JSON.stringify({ type: 'cwd', dir }));
+  } else {
+    currentCwd = dir;
+    document.getElementById('cwd-display').textContent = dir;
+  }
+  pkgJsonData = null;
+  closeCwdModal();
+}
+
+document.getElementById('cwd-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') setCwd();
+  if (e.key === 'Escape') closeCwdModal();
+});
+
+document.getElementById('cwd-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeCwdModal();
+});
+
+// ── NOTIFICATIONS ──────────────────────────────────────────────────
+function notify(type, title, msg) {
+  const icons = { success: '✓', error: '✗', warn: '⚠', info: 'ℹ' };
+  const el = document.createElement('div');
+  el.className = `notif ${type}`;
+  el.innerHTML = `
+    <span class="notif-icon">${icons[type]}</span>
+    <div class="notif-text">
+      <div class="notif-title">${escHtml(title)}</div>
+      <div class="notif-msg">${escHtml(msg)}</div>
+    </div>`;
+  document.getElementById('notif-container').appendChild(el);
+  setTimeout(() => {
+    el.classList.add('hiding');
+    setTimeout(() => el.remove(), 260);
+  }, 3500);
+}
+
+// ── THEME ──────────────────────────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const isLight = html.dataset.theme === 'light';
+  const next = isLight ? 'dark' : 'light';
+  html.dataset.theme = next;
+  document.getElementById('theme-btn').textContent = isLight ? '🌙' : '☀️';
+  localStorage.setItem('nc-theme', next);
+}
+
+// ── BUN ACTIONS ────────────────────────────────────────────────────
+function bunAdd() {
+  const pkg = document.getElementById('bun-pkg').value.trim();
+  const flags = getFlags(document.getElementById('panel-bun'));
+  runCmd(pkg ? `bun add ${pkg} ${flags}`.trim() : `bun install ${flags}`.trim());
+}
+function bunAddDev() {
+  const pkg = document.getElementById('bun-pkg').value.trim();
+  if (!pkg) { notify('warn', 'No package', 'Enter a package name first'); return; }
+  runCmd(`bun add -d ${pkg}`);
+}
+function bunRemove() {
+  const pkg = document.getElementById('bun-pkg').value.trim();
+  if (!pkg) { notify('warn', 'No package', 'Enter a package name to remove'); return; }
+  runCmd(`bun remove ${pkg}`);
+}
+function bunX() {
+  const pkg = (document.getElementById('bun-pkg2').value || document.getElementById('bun-pkg').value).trim();
+  if (!pkg) { notify('warn', 'No package', 'Enter a package name to execute'); return; }
+  runCmd(`bunx ${pkg}`);
+}
+function bunLink() {
+  const pkg = document.getElementById('bun-pkg2').value.trim();
+  runCmd(pkg ? `bun link ${pkg}` : 'bun link');
+}
+
+// ── SCRIPT FAVORITES ───────────────────────────────────────────────
+const FAV_DEFAULTS = [
+  { icon: '↓', cmd: 'npm install' },
+  { icon: '▶', cmd: 'npm run dev' },
+  { icon: '⚙', cmd: 'npm run build' },
+  { icon: '🔍', cmd: 'npm audit' },
+  { icon: '⬆', cmd: 'npm outdated' },
+];
+let favorites = [];
+
+function loadFavorites() {
+  try {
+    const saved = localStorage.getItem('nc-favorites');
+    favorites = saved ? JSON.parse(saved) : [...FAV_DEFAULTS];
+  } catch(e) {
+    favorites = [...FAV_DEFAULTS];
+  }
+  renderFavorites();
+}
+
+function saveFavorites() {
+  localStorage.setItem('nc-favorites', JSON.stringify(favorites));
+}
+
+function renderFavorites() {
+  const el = document.getElementById('fav-list');
+  if (!favorites.length) {
+    el.innerHTML = '<div class="ws-empty">No pinned commands</div>';
+    return;
+  }
+  el.innerHTML = favorites.map((f, i) => `
+    <div class="fav-item">
+      <button class="fav-run" onclick="runCmd('${f.cmd.replace(/'/g, "\\'")}')">
+        <span style="color:var(--text-dim);font-size:11px">${f.icon || '▶'}</span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(f.cmd)}</span>
+      </button>
+      <button class="fav-rm" onclick="removeFavorite(${i})">×</button>
+    </div>`).join('');
+}
+
+function addFavorite(cmd) {
+  if (!cmd) return;
+  if (favorites.some(f => f.cmd === cmd)) { notify('info', 'Already pinned', cmd); return; }
+  favorites.push({ icon: '▶', cmd });
+  saveFavorites();
+  renderFavorites();
+  notify('success', 'Pinned', cmd);
+}
+
+function removeFavorite(idx) {
+  favorites.splice(idx, 1);
+  saveFavorites();
+  renderFavorites();
+}
+
+function toggleFavInput() {
+  const inp = document.getElementById('fav-input');
+  inp.classList.toggle('open');
+  if (inp.classList.contains('open')) inp.focus();
+  else inp.value = '';
+}
+
+function favInputKey(e) {
+  if (e.key === 'Enter') {
+    const val = document.getElementById('fav-input').value.trim();
+    if (val) { addFavorite(val); document.getElementById('fav-input').value = ''; }
+    toggleFavInput();
+  }
+  if (e.key === 'Escape') toggleFavInput();
+}
+
+// ── COMMAND PALETTE ─────────────────────────────────────────────────
+const PALETTE_PANELS = [
+  { label: 'npm — Package Manager',    icon: '📦', value: 'npm' },
+  { label: 'pnpm — Performant npm',    icon: '⚡', value: 'pnpm' },
+  { label: 'bun — Fast JS Runtime',    icon: '🍞', value: 'bun' },
+  { label: 'nvm — Node Version Mgr',   icon: '🔧', value: 'nvm' },
+  { label: 'Git — Version Control',    icon: '🌿', value: 'git' },
+  { label: 'package.json Editor',      icon: '📝', value: 'pkgjson' },
+  { label: '.env Editor',              icon: '🔑', value: 'enveditor' },
+  { label: 'Project Scanner',          icon: '🔭', value: 'scanner' },
+  { label: 'Ports — Active Ports',     icon: '🔌', value: 'ports' },
+  { label: 'nodemon — File Watcher',   icon: '👁', value: 'nodemon' },
+  { label: 'ncu — Update Checker',     icon: '⬆', value: 'ncu' },
+];
+
+const PALETTE_CMDS = [
+  { label: 'npm install',              icon: '↓' },
+  { label: 'npm run dev',              icon: '▶' },
+  { label: 'npm run build',            icon: '⚙' },
+  { label: 'npm run test',             icon: '🧪' },
+  { label: 'npm audit',                icon: '🔍' },
+  { label: 'npm outdated',             icon: '⬆' },
+  { label: 'npm update',               icon: '⬆' },
+  { label: 'pnpm install',             icon: '↓' },
+  { label: 'pnpm dev',                 icon: '▶' },
+  { label: 'pnpm build',               icon: '⚙' },
+  { label: 'pnpm update --latest',     icon: '⬆' },
+  { label: 'pnpm outdated',            icon: '⬆' },
+  { label: 'bun install',              icon: '↓' },
+  { label: 'bun dev',                  icon: '▶' },
+  { label: 'bun update',               icon: '⬆' },
+  { label: 'git status',               icon: '🌿' },
+  { label: 'git pull',                 icon: '⇓' },
+  { label: 'git push',                 icon: '⇑' },
+  { label: 'git diff',                 icon: '≡' },
+  { label: 'git log --oneline -10',    icon: '≡' },
+  { label: 'git stash',                icon: '≡' },
+  { label: 'node --version',           icon: 'ℹ' },
+];
+
+const PALETTE_ACTIONS = [
+  { label: 'Split Terminal',  icon: '⊟', action: () => toggleSplit() },
+  { label: 'Clear Terminal',  icon: '✕', action: () => clearTerm() },
+  { label: 'Toggle Theme',    icon: '🌙', action: () => toggleTheme() },
+  { label: 'Change Directory',icon: '📂', action: () => openCwdModal() },
+];
+
+let paletteIdx = 0;
+let paletteFiltered = [];
+
+function openPalette() {
+  document.getElementById('palette-overlay').classList.add('open');
+  const inp = document.getElementById('palette-input');
+  inp.value = '';
+  inp.focus();
+  filterPalette('');
+}
+
+function closePalette() {
+  document.getElementById('palette-overlay').classList.remove('open');
+  paletteIdx = 0;
+}
+
+function buildPaletteItems(query) {
+  const q = query.toLowerCase();
+  const items = [];
+
+  // Workspaces
+  workspaces.forEach(w => {
+    if (!q || w.name.toLowerCase().includes(q) || w.dir.toLowerCase().includes(q)) {
+      items.push({ icon: '📁', label: w.name, sub: w.dir, type: 'workspace', exec: () => switchToWorkspace(w.dir) });
+    }
+  });
+
+  // Pinned favorites
+  favorites.forEach(f => {
+    if (!q || f.cmd.toLowerCase().includes(q)) {
+      items.push({ icon: f.icon || '▶', label: f.cmd, type: 'pinned', exec: () => runCmd(f.cmd) });
+    }
+  });
+
+  // Panels
+  PALETTE_PANELS.forEach(p => {
+    if (!q || p.label.toLowerCase().includes(q) || p.value.includes(q)) {
+      items.push({ icon: p.icon, label: p.label, type: 'panel', exec: () => switchPanel(p.value) });
+    }
+  });
+
+  // Quick commands
+  PALETTE_CMDS.forEach(c => {
+    if (!q || c.label.toLowerCase().includes(q)) {
+      items.push({ icon: c.icon, label: c.label, type: 'cmd', exec: () => runCmd(c.label) });
+    }
+  });
+
+  // Actions
+  PALETTE_ACTIONS.forEach(a => {
+    if (!q || a.label.toLowerCase().includes(q)) {
+      items.push({ icon: a.icon, label: a.label, type: 'action', exec: a.action });
+    }
+  });
+
+  // If query looks like a command (has space or special chars), offer to run it directly
+  if (q && !items.some(i => i.label.toLowerCase() === q)) {
+    items.unshift({ icon: '▶', label: query, type: 'run', exec: () => runCmd(query) });
+  }
+
+  return items;
+}
+
+function filterPalette(query) {
+  paletteFiltered = buildPaletteItems(query);
+  paletteIdx = 0;
+  renderPaletteResults();
+}
+
+function renderPaletteResults() {
+  const el = document.getElementById('palette-results');
+  if (!paletteFiltered.length) {
+    el.innerHTML = '<div class="palette-empty">No results</div>';
+    return;
+  }
+  el.innerHTML = paletteFiltered.map((item, i) => {
+    const typeLabels = { panel: 'panel', cmd: 'cmd', workspace: 'workspace', action: 'action', run: 'run', pinned: '⭐' };
+    return `<div class="palette-item ${i === paletteIdx ? 'selected' : ''}" onclick="executePaletteItem(${i})">
+      <span class="palette-item-icon">${item.icon}</span>
+      <span class="palette-item-label">${escHtml(item.label)}${item.sub ? `<span style="color:var(--text-dim);font-size:10px;margin-left:8px">${escHtml(item.sub)}</span>` : ''}</span>
+      <span class="palette-item-type">${typeLabels[item.type] || item.type}</span>
+    </div>`;
+  }).join('');
+}
+
+function executePaletteItem(idx) {
+  const item = paletteFiltered[idx];
+  if (item) { item.exec(); closePalette(); }
+}
+
+function paletteKey(e) {
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    paletteIdx = Math.min(paletteIdx + 1, paletteFiltered.length - 1);
+    renderPaletteResults();
+    document.querySelectorAll('.palette-item')[paletteIdx]?.scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    paletteIdx = Math.max(paletteIdx - 1, 0);
+    renderPaletteResults();
+    document.querySelectorAll('.palette-item')[paletteIdx]?.scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'Enter') {
+    executePaletteItem(paletteIdx);
+  } else if (e.key === 'Escape') {
+    closePalette();
+  }
+}
+
+// ── KEYBOARD SHORTCUTS ──────────────────────────────────────────────
+const PANEL_KEYS = ['npm', 'pnpm', 'bun', 'nvm', 'git', 'pkgjson', 'scanner', 'enveditor', 'ports'];
+
+document.addEventListener('keydown', e => {
+  const inInput = ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
+
+  // Ctrl+K — command palette (always)
+  if (e.ctrlKey && !e.shiftKey && e.key === 'k') {
+    e.preventDefault();
+    document.getElementById('palette-overlay').classList.contains('open') ? closePalette() : openPalette();
+    return;
+  }
+
+  // Escape — close any modal/palette
+  if (e.key === 'Escape') {
+    closePalette();
+    closeCwdModal();
+    return;
+  }
+
+  // Skip remaining shortcuts when typing in inputs (except palette)
+  if (inInput) return;
+
+  // Ctrl+T — toggle split terminal
+  if (e.ctrlKey && e.key === 't') { e.preventDefault(); toggleSplit(); return; }
+
+  // Ctrl+L — clear terminal
+  if (e.ctrlKey && e.key === 'l') { e.preventDefault(); clearTerm(); return; }
+
+  // Ctrl+Shift+P — package.json editor
+  if (e.ctrlKey && e.shiftKey && e.key === 'P') { e.preventDefault(); switchPanel('pkgjson'); return; }
+
+  // Ctrl+Shift+E — .env editor
+  if (e.ctrlKey && e.shiftKey && e.key === 'E') { e.preventDefault(); switchPanel('enveditor'); return; }
+
+  // Ctrl+1…9 — switch panels
+  if (e.ctrlKey && /^[1-9]$/.test(e.key)) {
+    e.preventDefault();
+    const panel = PANEL_KEYS[parseInt(e.key) - 1];
+    if (panel) switchPanel(panel);
+    return;
+  }
+});
+
+// ── WORKSPACE MANAGER ──────────────────────────────────────────────
+let workspaces = [];
+
+async function loadWorkspaces() {
+  try {
+    const res = await fetch('/api/workspaces');
+    workspaces = await res.json();
+    renderWorkspaces();
+  } catch(e) {}
+}
+
+function renderWorkspaces() {
+  const el = document.getElementById('workspace-list');
+  if (!workspaces.length) {
+    el.innerHTML = '<div class="ws-empty">No saved workspaces</div>';
+    return;
+  }
+  el.innerHTML = workspaces.map((w, i) => {
+    const isActive = w.dir === currentCwd;
+    const safeDir = w.dir.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    return `<div class="workspace-item ${isActive ? 'active-ws' : ''}" onclick="switchToWorkspace('${safeDir}')">
+      <span style="font-size:12px">📁</span>
+      <span class="workspace-name" title="${escHtml(w.dir)}">${escHtml(w.name)}</span>
+      <button class="workspace-rm" onclick="removeWorkspace(${i}, event)">×</button>
+    </div>`;
+  }).join('');
+}
+
+async function addWorkspace() {
+  if (!currentCwd) { notify('warn', 'No directory', 'Navigate to a directory first'); return; }
+  const name = currentCwd.replace(/\\/g, '/').split('/').filter(Boolean).pop() || currentCwd;
+  if (workspaces.some(w => w.dir === currentCwd)) { notify('info', 'Already saved', name); return; }
+  workspaces.push({ name, dir: currentCwd });
+  await saveWorkspacesRemote();
+  renderWorkspaces();
+  notify('success', 'Workspace saved', name);
+}
+
+async function removeWorkspace(idx, evt) {
+  evt.stopPropagation();
+  workspaces.splice(idx, 1);
+  await saveWorkspacesRemote();
+  renderWorkspaces();
+}
+
+async function saveWorkspacesRemote() {
+  try {
+    await fetch('/api/workspaces', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(workspaces)
+    });
+  } catch(e) {}
+}
+
+function switchToWorkspace(dir) {
+  if (wsReady) ws.send(JSON.stringify({ type: 'cwd', dir }));
+  else { currentCwd = dir; document.getElementById('cwd-display').textContent = dir; }
+  pkgJsonData = null;
+}
+
+// ── GIT INTEGRATION ────────────────────────────────────────────────
+async function loadGit() {
+  const content = document.getElementById('git-content');
+  content.innerHTML = '<div class="git-no-repo" style="color:var(--text-muted)">⏳ Fetching git status…</div>';
+  try {
+    const res = await fetch(`/api/git?dir=${encodeURIComponent(currentCwd || '.')}`);
+    const d = await res.json();
+    if (!d.isGit) {
+      content.innerHTML = `<div class="git-no-repo">
+        <div style="font-size:32px;margin-bottom:10px">🌿</div>
+        <div>Not a git repository</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:8px">${escHtml(currentCwd)}</div>
+      </div>`;
+      return;
+    }
+    renderGit(d);
+  } catch(e) {
+    content.innerHTML = `<div class="git-no-repo">✗ ${escHtml(e.message)}</div>`;
+  }
+}
+
+function renderGit(d) {
+  const content = document.getElementById('git-content');
+  const commitsHtml = d.commits.length
+    ? d.commits.map(c => `
+        <div class="git-commit-item">
+          <span class="git-commit-hash">${escHtml(c.hash)}</span>
+          <span class="git-commit-msg">${escHtml(c.msg)}</span>
+        </div>`).join('')
+    : '<div style="color:var(--text-muted);font-size:11px;padding:8px">No commits yet</div>';
+
+  const changesHtml = d.changes.length ? `
+    <div class="section-title">${d.changes.length} Uncommitted Change${d.changes.length > 1 ? 's' : ''}</div>
+    <div class="git-changes-list">${d.changes.map(c => {
+      const flag = c.slice(0, 2).trim() || '?';
+      const file = c.slice(3).trim();
+      const flagClass = 'AMDR'.includes(flag[0]) ? `git-flag-${flag[0]}` : 'git-flag-D';
+      return `<div class="git-change-item">
+        <span class="git-change-flag ${flagClass}">${escHtml(flag)}</span>
+        <span style="color:var(--text-muted)">${escHtml(file)}</span>
+      </div>`;
+    }).join('')}</div>` : '';
+
+  content.innerHTML = `
+    <div class="git-header-row">
+      <span style="font-size:18px">🌿</span>
+      <div class="git-branch-badge">⎇ ${escHtml(d.branch || 'unknown')}</div>
+      <div class="git-status-badge ${d.clean ? 'clean' : 'dirty'}">${d.clean ? '✓ clean' : `✗ ${d.changes.length} changed`}</div>
+      <div style="flex:1"></div>
+      <button class="btn btn-green" onclick="loadGit()" style="font-size:10px;padding:4px 10px">↺ Refresh</button>
+    </div>
+    <div class="git-actions">
+      <button class="btn btn-green" onclick="runCmd('git pull')">⇓ pull</button>
+      <button class="btn btn-accent" onclick="runCmd('git push')">⇑ push</button>
+      <button class="btn btn-blue" onclick="runCmd('git status')">≡ status</button>
+      <button class="btn btn-blue" onclick="runCmd('git diff')">≡ diff</button>
+      <button class="btn btn-blue" onclick="runCmd('git stash')">≡ stash</button>
+      <button class="btn btn-blue" onclick="runCmd('git stash pop')">≡ stash pop</button>
+      <button class="btn btn-blue" onclick="runCmd('git log --oneline -10')">≡ log</button>
+    </div>
+    <div class="section-title">Recent Commits</div>
+    <div class="git-commit-list">${commitsHtml}</div>
+    ${changesHtml}`;
+}
+
+// ── SPLIT TERMINAL ──────────────────────────────────────────────────
+let isSplit = false;
+let currentRunId2 = null;
+let cmdHistory2 = [];
+let historyIdx2 = -1;
+
+function toggleSplit() {
+  isSplit = !isSplit;
+  const term = document.getElementById('terminal-container');
+  const btn = document.getElementById('split-btn');
+  term.classList.toggle('split', isSplit);
+  btn.classList.toggle('active', isSplit);
+  btn.textContent = isSplit ? '⊟ unsplit' : '⊟ split';
+  if (isSplit) {
+    addTermLine2('tl-sys', '⬡ Terminal 2 ready');
+    addTermLine2('tl-sep', '─'.repeat(48));
+    setTimeout(() => document.getElementById('term-input-2').focus(), 50);
+  }
+}
+
+const termOut2 = () => document.getElementById('term-out-2');
+
+function addTermLine2(cls, html) {
+  const el = document.createElement('span');
+  el.className = 'tl ' + cls;
+  el.innerHTML = html + '\n';
+  termOut2().appendChild(el);
+  termOut2().scrollTop = termOut2().scrollHeight;
+}
+
+function appendOutput2(id, text, cls) {
+  const clean = text
+    .replace(/\x1b\[[0-9;]*[mGKHF]/g, '')
+    .replace(/\x1b\[[A-Z]/g, '')
+    .replace(/\r/g, '');
+  const lines = clean.split('\n');
+  lines.forEach((line, i) => {
+    if (i === lines.length - 1 && line === '') return;
+    const rendered = renderLine(line, cls);
+    addTermLine2(rendered.cls, rendered.html);
+  });
+}
+
+function runCmd2(cmd) {
+  if (!cmd || !cmd.trim()) return;
+  if (!wsReady) { notify('warn', 'Not connected', 'Server not connected'); return; }
+  cmdId++;
+  const id = 'cmd-' + cmdId;
+  paneMap.set(id, 2);
+  cmdHistory2.unshift(cmd.trim());
+  historyIdx2 = -1;
+  ws.send(JSON.stringify({ type: 'run', id, cmd: cmd.trim(), cwd: currentCwd }));
+}
+
+function stopCurrent2() {
+  if (currentRunId2 && ws && wsReady) {
+    ws.send(JSON.stringify({ type: 'kill', id: currentRunId2 }));
+  }
+}
+
+function handleInput2(e) {
+  const inp = document.getElementById('term-input-2');
+  if (e.key === 'Enter') {
+    const val = inp.value.trim();
+    if (val) { runCmd2(val); inp.value = ''; historyIdx2 = -1; }
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (historyIdx2 < cmdHistory2.length - 1) inp.value = cmdHistory2[++historyIdx2];
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    historyIdx2 > 0 ? inp.value = cmdHistory2[--historyIdx2] : (historyIdx2 = -1, inp.value = '');
+  }
+}
+
+// ── DEPENDENCY MANAGER ──────────────────────────────────────────
+let depsData = [];
+let depsFilter = 'all';
+
+async function loadDeps() {
+  document.getElementById('deps-content').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">⏳ Scanning dependencies…</div>';
+  document.getElementById('deps-audit-summary').style.display = 'none';
+  try {
+    const res = await fetch(`/api/deps?dir=${encodeURIComponent(currentCwd)}`);
+    const d = await res.json();
+    if (d.error) {
+      document.getElementById('deps-content').innerHTML = `<div style="padding:20px;color:var(--t-red)">✗ ${escHtml(d.error)}</div>`;
+      return;
+    }
+    depsData = d.deps || [];
+    renderDepsAudit(d.auditSummary || {});
+    renderDepsTable();
+    const outdCnt = depsData.filter(x => x.outdated).length;
+    const vulnCnt = depsData.filter(x => x.vulnerable).length;
+    document.getElementById('badge-outdated').textContent = outdCnt;
+    document.getElementById('badge-vuln').textContent = vulnCnt;
+    const navBadge = document.getElementById('deps-nav-badge');
+    if (navBadge) navBadge.textContent = outdCnt ? `${outdCnt} outdated` : 'ok';
+  } catch(e) {
+    document.getElementById('deps-content').innerHTML = `<div style="padding:20px;color:var(--t-red)">✗ ${escHtml(e.message)}</div>`;
+  }
+}
+
+function setDepsFilter(f) {
+  depsFilter = f;
+  document.querySelectorAll('.deps-filter').forEach(b => b.classList.toggle('active', b.dataset.filter === f));
+  renderDepsTable();
+}
+
+function renderDepsAudit(summary) {
+  const el = document.getElementById('deps-audit-summary');
+  const total = (summary.critical||0)+(summary.high||0)+(summary.moderate||0)+(summary.low||0);
+  if (!total) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.innerHTML = `<div class="audit-summary">
+    <span style="font-weight:600">⚠ npm audit:</span>
+    ${summary.critical ? `<span class="sev-badge sev-critical">${summary.critical} critical</span>` : ''}
+    ${summary.high     ? `<span class="sev-badge sev-high">${summary.high} high</span>` : ''}
+    ${summary.moderate ? `<span class="sev-badge sev-moderate">${summary.moderate} moderate</span>` : ''}
+    ${summary.low      ? `<span class="sev-badge sev-low">${summary.low} low</span>` : ''}
+    <button class="btn" style="font-size:10px;padding:3px 8px;margin-left:auto" onclick="runCmd('npm audit')">Full Report</button>
+  </div>`;
+}
+
+function renderDepsTable() {
+  let list = depsData;
+  if (depsFilter === 'prod')       list = depsData.filter(d => d.type === 'prod');
+  else if (depsFilter === 'dev')   list = depsData.filter(d => d.type === 'dev');
+  else if (depsFilter === 'outdated')   list = depsData.filter(d => d.outdated);
+  else if (depsFilter === 'vulnerable') list = depsData.filter(d => d.vulnerable);
+
+  if (!list.length) {
+    document.getElementById('deps-content').innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-muted)">No packages match this filter</div>';
+    return;
+  }
+  const rows = list.map(d => {
+    const outdBadge = d.outdated    ? `<span class="badge-outdated">outdated</span>` : '';
+    const vulnBadge = d.vulnerable  ? `<span class="badge-vuln-sm sev-${d.severity}" style="margin-left:4px">${d.severity}</span>` : '';
+    const latestCell = d.latest
+      ? (d.outdated ? `<span style="color:var(--t-green);font-weight:600">${escHtml(d.latest)}</span>` : escHtml(d.latest))
+      : '<span style="color:var(--text-dim)">—</span>';
+    const currCell = d.current ? escHtml(d.current) : '<span style="color:var(--text-dim)">—</span>';
+    const updBtn = d.outdated
+      ? `<button class="btn btn-blue" style="font-size:9px;padding:2px 7px" onclick="runCmd('npm install ${escHtml(d.name)}@latest')">⬆ update</button>`
+      : '';
+    const rowCls = d.vulnerable ? 'row-vuln' : d.outdated ? 'row-outdated' : '';
+    return `<tr class="${rowCls}">
+      <td class="dep-name">${escHtml(d.name)}</td>
+      <td><span class="dep-type-badge ${d.type}">${d.type}</span></td>
+      <td style="font-family:monospace;font-size:11px">${escHtml(d.declared)}</td>
+      <td style="font-family:monospace;font-size:11px">${currCell}</td>
+      <td style="font-family:monospace;font-size:11px">${latestCell}</td>
+      <td>${outdBadge}${vulnBadge}</td>
+      <td>${updBtn}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('deps-content').innerHTML = `<div style="overflow-x:auto">
+    <table class="deps-table">
+      <thead><tr><th>Package</th><th>Type</th><th>Declared</th><th>Installed</th><th>Latest</th><th>Status</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+function depsUpdateAll() {
+  const pkgs = depsData.filter(d => d.outdated).map(d => d.name + '@latest');
+  if (pkgs.length) runCmd('npm install ' + pkgs.join(' '));
+}
+
+// ── PROCESS MONITOR ──────────────────────────────────────────────
+let _procInterval = null;
+
+function startProcMonitor() {
+  loadProcs();
+  if (document.getElementById('proc-autorefresh').checked && !_procInterval) {
+    _procInterval = setInterval(loadProcs, 3000);
+  }
+}
+
+function stopProcMonitor() {
+  clearInterval(_procInterval);
+  _procInterval = null;
+}
+
+function toggleProcAutoRefresh() {
+  if (document.getElementById('proc-autorefresh').checked) startProcMonitor();
+  else stopProcMonitor();
+}
+
+async function loadProcs() {
+  try {
+    const res = await fetch('/api/procs');
+    const d = await res.json();
+    renderProcs(d.procs || []);
+    document.getElementById('proc-last-update').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  } catch(e) {}
+}
+
+function renderProcs(procs) {
+  if (!procs.length) {
+    document.getElementById('proc-content').innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-muted)">No process data</div>';
+    return;
+  }
+  const rows = procs.map(p => {
+    const cpuHigh = p.cpu > 15;
+    const memHigh = p.mem > 300;
+    return `<tr class="${cpuHigh || memHigh ? 'proc-high' : ''}">
+      <td class="proc-name" title="${escHtml(p.name)}">${escHtml(p.name)}</td>
+      <td style="font-family:monospace">${p.pid}</td>
+      <td style="font-family:monospace;color:${cpuHigh ? 'var(--t-red)' : 'inherit'}">${p.cpu}%</td>
+      <td style="font-family:monospace;color:${memHigh ? '#ffa500' : 'inherit'}">${p.mem} MB</td>
+      <td><button class="btn" style="font-size:9px;padding:2px 7px;background:rgba(248,81,73,.12);color:var(--t-red)" onclick="killProc(${p.pid})">✕ kill</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('proc-content').innerHTML = `<div style="overflow-x:auto">
+    <table class="deps-table">
+      <thead><tr><th>Process</th><th>PID</th><th>CPU</th><th>Memory</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+async function killProc(pid) {
+  await fetch('/api/killpid', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ pid }) });
+  loadProcs();
+}
+
+// ── LOG VIEWER ───────────────────────────────────────────────────
+let _logFilter = 'all';
+let _logLines  = [];
+
+async function refreshLogFiles() {
+  try {
+    const res = await fetch(`/api/logs?dir=${encodeURIComponent(currentCwd)}`);
+    const d = await res.json();
+    const sel = document.getElementById('log-file-select');
+    sel.innerHTML = '<option value="">— select a log file —</option>';
+    (d.logs || []).forEach(l => {
+      const o = document.createElement('option');
+      o.value = l.path;
+      o.textContent = `${l.name} (${fmtBytes(l.size)})`;
+      sel.appendChild(o);
+    });
+    if (!d.logs || !d.logs.length) {
+      document.getElementById('log-viewer').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted)">No log files found in current directory</div>';
+    }
+  } catch(e) {}
+}
+
+async function loadLogContent() {
+  const file = document.getElementById('log-file-select').value;
+  if (!file) return;
+  document.getElementById('log-viewer').innerHTML = '<div style="padding:20px;color:var(--text-muted)">⏳ Loading…</div>';
+  try {
+    const res = await fetch(`/api/logread?file=${encodeURIComponent(file)}&lines=500`);
+    const d = await res.json();
+    if (!d.ok) {
+      document.getElementById('log-viewer').innerHTML = `<div style="padding:20px;color:var(--t-red)">✗ ${escHtml(d.error)}</div>`;
+      return;
+    }
+    _logLines = d.content.split('\n');
+    renderLog();
+  } catch(e) {
+    document.getElementById('log-viewer').innerHTML = `<div style="padding:20px;color:var(--t-red)">✗ ${escHtml(e.message)}</div>`;
+  }
+}
+
+function setLogFilter(f) {
+  _logFilter = f;
+  document.querySelectorAll('.log-filter').forEach(b => b.classList.toggle('active', b.dataset.lf === f));
+  renderLog();
+}
+
+function renderLog() {
+  let lines = _logLines;
+  if (_logFilter === 'error') lines = _logLines.filter(l => /error/i.test(l));
+  else if (_logFilter === 'warn')  lines = _logLines.filter(l => /warn/i.test(l));
+  else if (_logFilter === 'info')  lines = _logLines.filter(l => /info/i.test(l));
+  const html = lines.map(l => {
+    const cls = /error/i.test(l) ? 'log-err' : /warn/i.test(l) ? 'log-warn' : /info/i.test(l) ? 'log-info' : '';
+    return `<div class="log-line ${cls}">${escHtml(l)}</div>`;
+  }).join('');
+  const v = document.getElementById('log-viewer');
+  v.innerHTML = html || '<div style="padding:20px;text-align:center;color:var(--text-muted)">No matching entries</div>';
+  v.scrollTop = v.scrollHeight;
+}
+
+function clearLogView() {
+  _logLines = [];
+  document.getElementById('log-viewer').innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-muted)">Cleared</div>';
+}
+
+function fmtBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+// ── COMMAND HISTORY ──────────────────────────────────────────────
+const HIST_KEY = 'nc-history';
+const HIST_MAX = 300;
+let _cmdLog  = [];
+let _histNotif = false;
+
+function loadHistory() {
+  try { _cmdLog = JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch(e) { _cmdLog = []; }
+  try { _histNotif = JSON.parse(localStorage.getItem('nc-hist-notif') ?? 'false'); } catch(e) {}
+  const cb = document.getElementById('hist-notif-check');
+  if (cb) cb.checked = _histNotif;
+  updateHistBadge();
+}
+
+function saveHistSettings() {
+  _histNotif = document.getElementById('hist-notif-check').checked;
+  localStorage.setItem('nc-hist-notif', JSON.stringify(_histNotif));
+  if (_histNotif && 'Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function addHistEntry(entry) {
+  if (!entry.cmd) return;
+  _cmdLog.unshift(entry);
+  if (_cmdLog.length > HIST_MAX) _cmdLog.pop();
+  try { localStorage.setItem(HIST_KEY, JSON.stringify(_cmdLog)); } catch(e) {}
+  updateHistBadge();
+  if (document.getElementById('panel-history').classList.contains('active')) renderHistory();
+}
+
+function updateHistBadge() {
+  const b = document.getElementById('hist-nav-badge');
+  if (b) b.textContent = _cmdLog.length;
+}
+
+function renderHistory() {
+  const el = document.getElementById('history-content');
+  updateHistBadge();
+  if (!_cmdLog.length) {
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">No command history yet</div>';
+    return;
+  }
+  const rows = _cmdLog.map(h => {
+    const d = new Date(h.ts);
+    const time = d.toLocaleTimeString() + ' ' + d.toLocaleDateString();
+    const statusHtml = h.status === 'success'
+      ? '<span style="color:var(--t-green)">✓ success</span>'
+      : h.status === 'failed'
+        ? `<span style="color:var(--t-red)">✗ failed (${h.code ?? '?'})</span>`
+        : '<span style="color:var(--text-muted)">⏹ killed</span>';
+    const safeCmd = h.cmd.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    return `<tr>
+      <td style="color:var(--text-dim);font-size:11px;white-space:nowrap">${time}</td>
+      <td class="dep-name" style="font-family:monospace;font-size:12px">${escHtml(h.cmd)}</td>
+      <td style="font-size:12px;white-space:nowrap">${statusHtml}</td>
+      <td><button class="btn btn-blue" style="font-size:9px;padding:2px 7px" onclick="runCmd('${safeCmd}')">▶ run</button></td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<div style="overflow-x:auto"><table class="deps-table">
+    <thead><tr><th>Time</th><th>Command</th><th>Status</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function clearHistory() {
+  _cmdLog = [];
+  localStorage.removeItem(HIST_KEY);
+  renderHistory();
+}
+
+function exportHistory() {
+  const blob = new Blob([JSON.stringify(_cmdLog, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'nodectrl-history.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function sendDesktopNotif(title, body) {
+  if (!_histNotif) return;
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') {
+    new Notification(title, { body, silent: true });
+  } else if (Notification.permission === 'default') {
+    Notification.requestPermission().then(p => {
+      if (p === 'granted') new Notification(title, { body, silent: true });
+    });
+  }
+}
+
+// ── INIT ───────────────────────────────────────────────────────────
+// Restore theme button icon
+if (localStorage.getItem('nc-theme') === 'light') {
+  document.getElementById('theme-btn').textContent = '☀️';
+}
+
+// Restore last active panel
+const _savedPanel = localStorage.getItem('nc-panel');
+if (_savedPanel && document.getElementById('panel-' + _savedPanel)) {
+  switchPanel(_savedPanel);
+}
+
+connectWS();
+loadWorkspaces();
+loadFavorites();
+loadHistory();
+initSortableGrids();
+
+// Init terminal welcome
+addTermLine('tl-sys', '⬡ NodeCtrl — connecting to server…');
+addTermLine('tl-sep', '─'.repeat(48));
+</script>
+</body>
+</html>
