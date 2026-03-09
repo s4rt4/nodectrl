@@ -1237,16 +1237,23 @@ header {
       <div class="panel active" id="panel-npm">
         <div class="panel-head">
           <div class="panel-title"><div class="dot npm-dot"></div>npm</div>
-          <div class="panel-sub">Node Package Manager — manage dependencies and scripts</div>
+          <div class="panel-sub">Node Package Manager — manage dependencies and scripts · <span style="color:var(--text-dim)">drag cards to reorder</span></div>
         </div>
 
         <div class="input-section">
-          <div class="input-label">Install Package</div>
+          <div class="input-label">Package Operations</div>
           <div class="input-row">
             <input class="pkg-input" id="npm-pkg" placeholder="axios, react@18, lodash@latest…" />
-            <button class="btn btn-npm" onclick="npmInstall()">↓ Install</button>
+            <button class="btn btn-npm" onclick="npmInstall()">↓ install</button>
             <button class="btn btn-blue" onclick="npmInstallDev()">↓ --save-dev</button>
-            <button class="btn btn-red" onclick="npmUninstall()">✕ Remove</button>
+            <button class="btn btn-blue" onclick="npmInstallOptional()">↓ --save-optional</button>
+            <button class="btn btn-red" onclick="npmUninstall()">✕ uninstall</button>
+          </div>
+          <div class="input-row" style="margin-top:7px">
+            <input class="pkg-input" id="npm-pkg2" placeholder="package to inspect (info, explain…)" style="max-width:260px" />
+            <button class="btn btn-accent" onclick="npmInfo()">ℹ info</button>
+            <button class="btn btn-blue" onclick="npmExplain()">? explain</button>
+            <button class="btn btn-blue" onclick="npmNpx()">⚡ npx</button>
           </div>
           <div class="flags-row">
             <button class="flag-toggle" data-flag="--global">--global</button>
@@ -1254,46 +1261,141 @@ header {
             <button class="flag-toggle" data-flag="--legacy-peer-deps">--legacy-peer-deps</button>
             <button class="flag-toggle" data-flag="--force">--force</button>
             <button class="flag-toggle" data-flag="--dry-run">--dry-run</button>
+            <button class="flag-toggle" data-flag="--ignore-scripts">--ignore-scripts</button>
           </div>
         </div>
 
-        <div class="section-title">Common Commands</div>
-        <div class="cmd-grid">
+        <div class="section-title">Scripts</div>
+        <div class="cmd-grid" id="npm-grid-scripts">
           <div class="cmd-card npm-card">
-            <div class="cmd-name">Install Dependencies</div>
+            <div class="cmd-name">Dev Server</div>
+            <div class="cmd-code">npm run dev</div>
+            <div class="cmd-desc">Start development server</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm run dev')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Build</div>
+            <div class="cmd-code">npm run build</div>
+            <div class="cmd-desc">Compile and bundle for production</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm run build')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Preview</div>
+            <div class="cmd-code">npm run preview</div>
+            <div class="cmd-desc">Preview production build locally</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm run preview')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Test</div>
+            <div class="cmd-code">npm test</div>
+            <div class="cmd-desc">Run test suite</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm test')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Lint</div>
+            <div class="cmd-code">npm run lint</div>
+            <div class="cmd-desc">Run linter on source files</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm run lint')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Start</div>
+            <div class="cmd-code">npm start</div>
+            <div class="cmd-desc">Start production server</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm start')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Type Check</div>
+            <div class="cmd-code">npm run typecheck</div>
+            <div class="cmd-desc">Run TypeScript type checking</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm run typecheck')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Format</div>
+            <div class="cmd-code">npm run format</div>
+            <div class="cmd-desc">Auto-format code with Prettier</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm run format')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">List Scripts</div>
+            <div class="cmd-code">npm run</div>
+            <div class="cmd-desc">Show all available scripts in package.json</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm run')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Package Management</div>
+        <div class="cmd-grid" id="npm-grid-pkg">
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Install</div>
             <div class="cmd-code">npm install</div>
-            <div class="cmd-desc">Install all packages from package.json</div>
+            <div class="cmd-desc">Install all deps from package.json</div>
             <button class="run-card-btn btn-npm" onclick="runCmd('npm install')">▶ Run</button>
           </div>
           <div class="cmd-card npm-card">
-            <div class="cmd-name">Update Packages</div>
+            <div class="cmd-name">Install (CI)</div>
+            <div class="cmd-code">npm ci</div>
+            <div class="cmd-desc">Clean install from lockfile — strict, for CI</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm ci')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Update (semver)</div>
             <div class="cmd-code">npm update</div>
-            <div class="cmd-desc">Update packages to latest semver version</div>
+            <div class="cmd-desc">Update packages within semver range</div>
             <button class="run-card-btn btn-npm" onclick="runCmd('npm update')">▶ Run</button>
           </div>
           <div class="cmd-card npm-card">
-            <div class="cmd-name">Security Audit</div>
-            <div class="cmd-code">npm audit</div>
-            <div class="cmd-desc">Check for known security vulnerabilities</div>
-            <button class="run-card-btn btn-npm" onclick="runCmd('npm audit')">▶ Run</button>
-          </div>
-          <div class="cmd-card npm-card">
-            <div class="cmd-name">Fix Vulnerabilities</div>
-            <div class="cmd-code">npm audit fix</div>
-            <div class="cmd-desc">Auto-fix security issues where possible</div>
-            <button class="run-card-btn btn-npm" onclick="runCmd('npm audit fix')">▶ Run</button>
-          </div>
-          <div class="cmd-card npm-card">
-            <div class="cmd-name">List Outdated</div>
+            <div class="cmd-name">Outdated</div>
             <div class="cmd-code">npm outdated</div>
             <div class="cmd-desc">Show packages with newer versions available</div>
             <button class="run-card-btn btn-npm" onclick="runCmd('npm outdated')">▶ Run</button>
           </div>
           <div class="cmd-card npm-card">
-            <div class="cmd-name">List Installed</div>
+            <div class="cmd-name">List (top)</div>
             <div class="cmd-code">npm list --depth=0</div>
-            <div class="cmd-desc">Show all top-level installed packages</div>
+            <div class="cmd-desc">Show top-level installed packages only</div>
             <button class="run-card-btn btn-npm" onclick="runCmd('npm list --depth=0')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">List (all)</div>
+            <div class="cmd-code">npm list</div>
+            <div class="cmd-desc">Show full dependency tree</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm list')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">List (global)</div>
+            <div class="cmd-code">npm list -g --depth=0</div>
+            <div class="cmd-desc">Show globally installed packages</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm list -g --depth=0')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Dedupe</div>
+            <div class="cmd-code">npm dedupe</div>
+            <div class="cmd-desc">Reduce duplication in node_modules tree</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm dedupe')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Rebuild</div>
+            <div class="cmd-code">npm rebuild</div>
+            <div class="cmd-desc">Rebuild native addons for current Node version</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm rebuild')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Audit</div>
+            <div class="cmd-code">npm audit</div>
+            <div class="cmd-desc">Check for known security vulnerabilities</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm audit')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Audit Fix</div>
+            <div class="cmd-code">npm audit fix</div>
+            <div class="cmd-desc">Auto-fix vulnerabilities where possible</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm audit fix')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Audit Fix (force)</div>
+            <div class="cmd-code">npm audit fix --force</div>
+            <div class="cmd-desc">Force-fix all vulnerabilities, may break semver</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm audit fix --force')">▶ Run</button>
           </div>
           <div class="cmd-card npm-card">
             <div class="cmd-name">Clean Cache</div>
@@ -1302,30 +1404,236 @@ header {
             <button class="run-card-btn btn-npm" onclick="runCmd('npm cache clean --force')">▶ Run</button>
           </div>
           <div class="cmd-card npm-card">
-            <div class="cmd-name">Check npm Version</div>
+            <div class="cmd-name">Verify Cache</div>
+            <div class="cmd-code">npm cache verify</div>
+            <div class="cmd-desc">Verify cache integrity and garbage-collect</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm cache verify')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Execute &amp; Publish</div>
+        <div class="cmd-grid" id="npm-grid-exec">
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">npx (run package)</div>
+            <div class="cmd-code">npx &lt;package&gt;</div>
+            <div class="cmd-desc">Run a package binary without installing</div>
+            <button class="run-card-btn btn-npm" onclick="npmNpx()">⚡ npx</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Create Project</div>
+            <div class="cmd-code">npm create vite@latest</div>
+            <div class="cmd-desc">Scaffold new project via create-* template</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm create vite@latest')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Init</div>
+            <div class="cmd-code">npm init -y</div>
+            <div class="cmd-desc">Create package.json with default values</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm init -y')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Pack</div>
+            <div class="cmd-code">npm pack</div>
+            <div class="cmd-desc">Create a tarball of the package</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm pack')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Publish</div>
+            <div class="cmd-code">npm publish</div>
+            <div class="cmd-desc">Publish package to npm registry</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm publish')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Publish (dry run)</div>
+            <div class="cmd-code">npm publish --dry-run</div>
+            <div class="cmd-desc">Preview publish without actually publishing</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm publish --dry-run')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Link (local)</div>
+            <div class="cmd-code">npm link</div>
+            <div class="cmd-desc">Symlink package globally for local development</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm link')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Unlink</div>
+            <div class="cmd-code">npm unlink</div>
+            <div class="cmd-desc">Remove global symlink for current package</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm unlink')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Version (patch)</div>
+            <div class="cmd-code">npm version patch</div>
+            <div class="cmd-desc">Bump patch version (1.0.0 → 1.0.1)</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm version patch')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Version (minor)</div>
+            <div class="cmd-code">npm version minor</div>
+            <div class="cmd-desc">Bump minor version (1.0.0 → 1.1.0)</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm version minor')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Version (major)</div>
+            <div class="cmd-code">npm version major</div>
+            <div class="cmd-desc">Bump major version (1.0.0 → 2.0.0)</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm version major')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Workspaces (Monorepo)</div>
+        <div class="cmd-grid" id="npm-grid-workspace">
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Install All</div>
+            <div class="cmd-code">npm install --workspaces</div>
+            <div class="cmd-desc">Install deps in all workspace packages</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm install --workspaces')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Build All</div>
+            <div class="cmd-code">npm run build --workspaces</div>
+            <div class="cmd-desc">Build all packages in workspace</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm run build --workspaces')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Test All</div>
+            <div class="cmd-code">npm test --workspaces</div>
+            <div class="cmd-desc">Run tests across all workspace packages</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm test --workspaces')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">List Workspaces</div>
+            <div class="cmd-code">npm list --workspaces --depth=0</div>
+            <div class="cmd-desc">List top-level deps in all workspace packages</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm list --workspaces --depth=0')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Run in Workspace</div>
+            <div class="cmd-code">npm run dev --workspace=packages/app</div>
+            <div class="cmd-desc">Run script in a specific workspace package</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm run dev --workspace=packages/app')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Install in Workspace</div>
+            <div class="cmd-code">npm install --workspace=packages/app</div>
+            <div class="cmd-desc">Install deps in a specific workspace</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm install --workspace=packages/app')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Registry &amp; Auth</div>
+        <div class="cmd-grid" id="npm-grid-registry">
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Who Am I</div>
+            <div class="cmd-code">npm whoami</div>
+            <div class="cmd-desc">Show currently logged-in npm user</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm whoami')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Login</div>
+            <div class="cmd-code">npm login</div>
+            <div class="cmd-desc">Log in to npm registry account</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm login')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Logout</div>
+            <div class="cmd-code">npm logout</div>
+            <div class="cmd-desc">Log out of npm registry</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm logout')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Get Registry</div>
+            <div class="cmd-code">npm config get registry</div>
+            <div class="cmd-desc">Show current registry URL</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm config get registry')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Set Registry</div>
+            <div class="cmd-code">npm config set registry https://registry.npmjs.org</div>
+            <div class="cmd-desc">Reset registry back to official npm</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm config set registry https://registry.npmjs.org')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Config List</div>
+            <div class="cmd-code">npm config list</div>
+            <div class="cmd-desc">Show all active npm configuration values</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm config list')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Token List</div>
+            <div class="cmd-code">npm token list</div>
+            <div class="cmd-desc">List auth tokens for current account</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm token list')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Info &amp; Debug</div>
+        <div class="cmd-grid" id="npm-grid-info">
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Package Info</div>
+            <div class="cmd-code">npm info &lt;pkg&gt;</div>
+            <div class="cmd-desc">Show metadata for a package from registry</div>
+            <button class="run-card-btn btn-npm" onclick="npmInfo()">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Search</div>
+            <div class="cmd-code">npm search &lt;keyword&gt;</div>
+            <div class="cmd-desc">Search for packages on npm registry</div>
+            <button class="run-card-btn btn-npm" onclick="npmSearch()">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Explain</div>
+            <div class="cmd-code">npm explain &lt;pkg&gt;</div>
+            <div class="cmd-desc">Explain why a package is installed</div>
+            <button class="run-card-btn btn-npm" onclick="npmExplain()">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Docs</div>
+            <div class="cmd-code">npm docs &lt;pkg&gt;</div>
+            <div class="cmd-desc">Open package documentation in browser</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm docs ' + (document.getElementById('npm-pkg2').value.trim() || 'npm'))">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Repo</div>
+            <div class="cmd-code">npm repo &lt;pkg&gt;</div>
+            <div class="cmd-desc">Open package repository in browser</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm repo ' + (document.getElementById('npm-pkg2').value.trim() || 'npm'))">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Bugs</div>
+            <div class="cmd-code">npm bugs &lt;pkg&gt;</div>
+            <div class="cmd-desc">Open package issue tracker in browser</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm bugs ' + (document.getElementById('npm-pkg2').value.trim() || 'npm'))">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">Doctor</div>
+            <div class="cmd-code">npm doctor</div>
+            <div class="cmd-desc">Check npm environment for known issues</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm doctor')">▶ Run</button>
+          </div>
+          <div class="cmd-card npm-card">
+            <div class="cmd-name">npm Version</div>
             <div class="cmd-code">npm --version</div>
             <div class="cmd-desc">Display current npm version</div>
             <button class="run-card-btn btn-npm" onclick="runCmd('npm --version')">▶ Run</button>
           </div>
-        </div>
-
-        <div class="section-title">Scripts</div>
-        <div class="cmd-grid">
           <div class="cmd-card npm-card">
-            <div class="cmd-code">npm run dev</div>
-            <button class="run-card-btn btn-npm" onclick="runCmd('npm run dev')">▶ Dev Server</button>
+            <div class="cmd-name">node_modules Root</div>
+            <div class="cmd-code">npm root</div>
+            <div class="cmd-desc">Show path to current node_modules directory</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm root')">▶ Run</button>
           </div>
           <div class="cmd-card npm-card">
-            <div class="cmd-code">npm run build</div>
-            <button class="run-card-btn btn-npm" onclick="runCmd('npm run build')">▶ Build</button>
+            <div class="cmd-name">Prefix</div>
+            <div class="cmd-code">npm prefix</div>
+            <div class="cmd-desc">Show location of the nearest package root</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm prefix')">▶ Run</button>
           </div>
           <div class="cmd-card npm-card">
-            <div class="cmd-code">npm run test</div>
-            <button class="run-card-btn btn-npm" onclick="runCmd('npm run test')">▶ Test</button>
-          </div>
-          <div class="cmd-card npm-card">
-            <div class="cmd-code">npm run lint</div>
-            <button class="run-card-btn btn-npm" onclick="runCmd('npm run lint')">▶ Lint</button>
+            <div class="cmd-name">Global Prefix</div>
+            <div class="cmd-code">npm prefix -g</div>
+            <div class="cmd-desc">Show global npm installation path</div>
+            <button class="run-card-btn btn-npm" onclick="runCmd('npm prefix -g')">▶ Run</button>
           </div>
         </div>
       </div>
@@ -1969,7 +2277,7 @@ header {
       <div class="panel" id="panel-nodemon">
         <div class="panel-head">
           <div class="panel-title"><div class="dot" style="background:#ffa500;box-shadow:0 0 8px #ffa500"></div>nodemon</div>
-          <div class="panel-sub">Auto-restart Node.js app on file changes — install once, use everywhere</div>
+          <div class="panel-sub">Auto-restart Node.js app on file changes — install once, use everywhere · <span style="color:var(--text-dim)">drag cards to reorder</span></div>
         </div>
 
         <div class="input-section">
@@ -1979,61 +2287,179 @@ header {
             <button class="btn" style="background:rgba(255,165,0,.15);color:#ffa500" onclick="nodemonRun()">▶ Start</button>
             <button class="btn btn-red" onclick="stopCurrent()">⏹ Stop</button>
           </div>
+          <div class="input-row" style="margin-top:7px">
+            <input class="pkg-input" id="nodemon-exec" placeholder="executor: ts-node, babel-node, python…" style="max-width:260px" />
+            <button class="btn" style="background:rgba(255,165,0,.15);color:#ffa500" onclick="nodemonExec()">▶ --exec</button>
+            <button class="btn btn-blue" onclick="runCmd('nodemon --version')">? version</button>
+          </div>
           <div class="flags-row">
             <button class="flag-toggle" data-flag="--watch src">--watch src</button>
             <button class="flag-toggle" data-flag="--ext js,ts,json">--ext js,ts,json</button>
             <button class="flag-toggle" data-flag="--delay 500ms">--delay 500ms</button>
             <button class="flag-toggle" data-flag="--ignore node_modules">--ignore node_modules</button>
             <button class="flag-toggle" data-flag="--quiet">--quiet</button>
+            <button class="flag-toggle" data-flag="--verbose">--verbose</button>
+            <button class="flag-toggle" data-flag="--no-colors">--no-colors</button>
           </div>
         </div>
 
         <div class="input-section" style="margin-bottom:18px">
           <div class="input-label">Install nodemon</div>
           <div class="input-row">
-            <button class="btn" style="background:rgba(255,165,0,.15);color:#ffa500" onclick="runCmd('npm install -g nodemon')">↓ npm install -g nodemon</button>
-            <button class="btn btn-pnpm" onclick="runCmd('pnpm add -g nodemon')">↓ pnpm add -g nodemon</button>
-            <button class="btn btn-blue" onclick="runCmd('nodemon --version')">? Check version</button>
+            <button class="btn" style="background:rgba(255,165,0,.15);color:#ffa500" onclick="runCmd('npm install -g nodemon')">↓ npm -g</button>
+            <button class="btn btn-pnpm" onclick="runCmd('pnpm add -g nodemon')">↓ pnpm -g</button>
+            <button class="btn btn-bun" onclick="runCmd('bun add -g nodemon')">↓ bun -g</button>
+            <button class="btn btn-blue" onclick="runCmd('npm install --save-dev nodemon')">↓ save-dev</button>
           </div>
         </div>
 
-        <div class="section-title">nodemon Commands</div>
-        <div class="cmd-grid">
+        <div class="section-title">Basic Usage</div>
+        <div class="cmd-grid" id="nodemon-grid-basic">
           <div class="cmd-card" style="border-color:var(--border)">
-            <div class="cmd-name">Basic Watch</div>
+            <div class="cmd-name">Watch Entry File</div>
             <div class="cmd-code">nodemon server.js</div>
             <div class="cmd-desc">Watch and restart server.js on any change</div>
             <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon server.js')">▶ Run</button>
           </div>
           <div class="cmd-card" style="border-color:var(--border)">
-            <div class="cmd-name">Watch Specific Dir</div>
+            <div class="cmd-name">Watch src/ Directory</div>
             <div class="cmd-code">nodemon --watch src index.js</div>
             <div class="cmd-desc">Only restart when files in /src change</div>
             <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --watch src index.js')">▶ Run</button>
           </div>
           <div class="cmd-card" style="border-color:var(--border)">
-            <div class="cmd-name">Watch Extensions</div>
-            <div class="cmd-code">nodemon --ext js,ts,json</div>
-            <div class="cmd-desc">Restart on .js, .ts, or .json file changes</div>
-            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --ext js,ts,json')">▶ Run</button>
+            <div class="cmd-name">Watch Multiple Dirs</div>
+            <div class="cmd-code">nodemon --watch src --watch lib index.js</div>
+            <div class="cmd-desc">Restart when files in src/ or lib/ change</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --watch src --watch lib index.js')">▶ Run</button>
           </div>
           <div class="cmd-card" style="border-color:var(--border)">
-            <div class="cmd-name">Run npm script</div>
+            <div class="cmd-name">Watch Extensions</div>
+            <div class="cmd-code">nodemon --ext js,ts,json,env</div>
+            <div class="cmd-desc">Restart on specific file extension changes</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --ext js,ts,json,env server.js')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Ignore Pattern</div>
+            <div class="cmd-code">nodemon --ignore "*.test.js"</div>
+            <div class="cmd-desc">Skip restarting on test file changes</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --ignore \"*.test.js\" server.js')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Ignore node_modules</div>
+            <div class="cmd-code">nodemon --ignore node_modules</div>
+            <div class="cmd-desc">Explicitly exclude node_modules from watch</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --ignore node_modules server.js')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Restart Delay</div>
+            <div class="cmd-code">nodemon --delay 1000ms server.js</div>
+            <div class="cmd-desc">Wait 1s after change before restarting</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --delay 1000ms server.js')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">npm run script</div>
             <div class="cmd-code">nodemon --exec "npm run dev"</div>
-            <div class="cmd-desc">Use nodemon to run any npm script</div>
+            <div class="cmd-desc">Watch and re-run any npm script on change</div>
             <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --exec \"npm run dev\"')">▶ Run</button>
           </div>
           <div class="cmd-card" style="border-color:var(--border)">
-            <div class="cmd-name">TypeScript</div>
-            <div class="cmd-code">nodemon --exec "ts-node" app.ts</div>
-            <div class="cmd-desc">Watch and run TypeScript files directly</div>
+            <div class="cmd-name">Verbose</div>
+            <div class="cmd-code">nodemon --verbose server.js</div>
+            <div class="cmd-desc">Show all watched files and events</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --verbose server.js')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Quiet Mode</div>
+            <div class="cmd-code">nodemon --quiet server.js</div>
+            <div class="cmd-desc">Suppress nodemon startup messages</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --quiet server.js')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Executor / Language</div>
+        <div class="cmd-grid" id="nodemon-grid-exec">
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">TypeScript (ts-node)</div>
+            <div class="cmd-code">nodemon --exec ts-node app.ts</div>
+            <div class="cmd-desc">Run TypeScript files with ts-node on each change</div>
             <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --exec ts-node app.ts')">▶ Run</button>
           </div>
           <div class="cmd-card" style="border-color:var(--border)">
-            <div class="cmd-name">Verbose Mode</div>
-            <div class="cmd-code">nodemon --verbose server.js</div>
-            <div class="cmd-desc">Show all file watching activity</div>
-            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --verbose server.js')">▶ Run</button>
+            <div class="cmd-name">TypeScript (tsx)</div>
+            <div class="cmd-code">nodemon --exec tsx app.ts</div>
+            <div class="cmd-desc">Faster TypeScript execution with tsx (esbuild)</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --exec tsx app.ts')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">ESM (--input-type)</div>
+            <div class="cmd-code">nodemon --exec "node --experimental-vm-modules"</div>
+            <div class="cmd-desc">Run ESM modules with experimental flag</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --exec \"node --experimental-vm-modules\" index.mjs')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Babel Node</div>
+            <div class="cmd-code">nodemon --exec babel-node index.js</div>
+            <div class="cmd-desc">Run with Babel transpilation on every restart</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --exec babel-node index.js')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Python script</div>
+            <div class="cmd-code">nodemon --exec python script.py --ext py</div>
+            <div class="cmd-desc">Watch and restart a Python script on change</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --exec python script.py --ext py')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Debug Mode</div>
+            <div class="cmd-code">nodemon --inspect server.js</div>
+            <div class="cmd-desc">Start with Node.js inspector (port 9229)</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --inspect server.js')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Debug Break</div>
+            <div class="cmd-code">nodemon --inspect-brk server.js</div>
+            <div class="cmd-desc">Start and pause until debugger connects</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --inspect-brk server.js')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Config &amp; Signals</div>
+        <div class="cmd-grid" id="nodemon-grid-config">
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Use nodemon.json</div>
+            <div class="cmd-code">nodemon --config nodemon.json</div>
+            <div class="cmd-desc">Load custom nodemon config file</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --config nodemon.json')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Send SIGUSR2</div>
+            <div class="cmd-code">nodemon --signal SIGUSR2 server.js</div>
+            <div class="cmd-desc">Use SIGUSR2 signal for graceful restarts</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --signal SIGUSR2 server.js')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Legacy Watch</div>
+            <div class="cmd-code">nodemon --legacy-watch server.js</div>
+            <div class="cmd-desc">Use polling instead of fs events (WSL/Docker)</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --legacy-watch server.js')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Poll Interval</div>
+            <div class="cmd-code">nodemon --legacy-watch --polling-interval 500</div>
+            <div class="cmd-desc">Set polling interval in ms for file watching</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --legacy-watch --polling-interval 500 server.js')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Stdin Pass-through</div>
+            <div class="cmd-code">nodemon --stdin server.js</div>
+            <div class="cmd-desc">Pipe stdin to the child process</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('nodemon --stdin server.js')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Spawn with env</div>
+            <div class="cmd-code">NODE_ENV=production nodemon server.js</div>
+            <div class="cmd-desc">Run nodemon with custom environment variable</div>
+            <button class="run-card-btn" style="background:rgba(255,165,0,.12);color:#ffa500" onclick="runCmd('NODE_ENV=production nodemon server.js')">▶ Run</button>
           </div>
         </div>
       </div>
@@ -2042,21 +2468,23 @@ header {
       <div class="panel" id="panel-ncu">
         <div class="panel-head">
           <div class="panel-title"><div class="dot" style="background:#4fc3f7;box-shadow:0 0 8px #4fc3f7"></div>npm-check-updates</div>
-          <div class="panel-sub">Find newer versions of package dependencies than what is listed in package.json</div>
+          <div class="panel-sub">Check and upgrade dependency versions beyond what npm update allows · <span style="color:var(--text-dim)">drag cards to reorder</span></div>
         </div>
 
         <div class="input-section" style="margin-bottom:18px">
           <div class="input-label">Install ncu</div>
           <div class="input-row">
-            <button class="btn btn-blue" onclick="runCmd('npm install -g npm-check-updates')">↓ npm install -g npm-check-updates</button>
-            <button class="btn btn-blue" onclick="runCmd('ncu --version')">? Check version</button>
+            <button class="btn btn-blue" onclick="runCmd('npm install -g npm-check-updates')">↓ npm -g</button>
+            <button class="btn btn-pnpm" onclick="runCmd('pnpm add -g npm-check-updates')">↓ pnpm -g</button>
+            <button class="btn btn-bun" onclick="runCmd('bun add -g npm-check-updates')">↓ bun -g</button>
+            <button class="btn btn-blue" onclick="runCmd('ncu --version')">? version</button>
           </div>
         </div>
 
         <div class="input-section">
-          <div class="input-label">Filter by package name</div>
+          <div class="input-label">Filter / target package</div>
           <div class="input-row">
-            <input class="pkg-input" id="ncu-filter" placeholder="react, @types/*, lodash…" />
+            <input class="pkg-input" id="ncu-filter" placeholder="react, @types/*, lodash, /^@babel/" />
             <button class="btn btn-blue" onclick="ncuCheck()">🔍 Check</button>
             <button class="btn" style="background:rgba(248,81,73,.12);color:var(--t-red)" onclick="ncuUpgrade()">⬆ Upgrade</button>
           </div>
@@ -2065,42 +2493,20 @@ header {
             <button class="flag-toggle" data-flag="--peer">--peer</button>
             <button class="flag-toggle" data-flag="--dep prod">--dep prod</button>
             <button class="flag-toggle" data-flag="--dep dev">--dep dev</button>
+            <button class="flag-toggle" data-flag="--dep optional">--dep optional</button>
             <button class="flag-toggle" data-flag="--target minor">--target minor</button>
             <button class="flag-toggle" data-flag="--target patch">--target patch</button>
+            <button class="flag-toggle" data-flag="--reject lodash">--reject</button>
           </div>
         </div>
 
-        <div class="section-title">ncu Commands</div>
-        <div class="cmd-grid">
+        <div class="section-title">Check &amp; Inspect</div>
+        <div class="cmd-grid" id="ncu-grid-check">
           <div class="cmd-card" style="border-color:var(--border)">
-            <div class="cmd-name">Check All Updates</div>
+            <div class="cmd-name">Check All</div>
             <div class="cmd-code">ncu</div>
-            <div class="cmd-desc">Show all packages that have newer versions</div>
+            <div class="cmd-desc">Show all packages with newer versions available</div>
             <button class="run-card-btn btn-blue" onclick="runCmd('ncu')">▶ Run</button>
-          </div>
-          <div class="cmd-card" style="border-color:var(--border)">
-            <div class="cmd-name">Upgrade package.json</div>
-            <div class="cmd-code">ncu -u</div>
-            <div class="cmd-desc">Write updated versions to package.json</div>
-            <button class="run-card-btn btn-blue" onclick="runCmd('ncu -u')">▶ Run</button>
-          </div>
-          <div class="cmd-card" style="border-color:var(--border)">
-            <div class="cmd-name">Interactive Mode</div>
-            <div class="cmd-code">ncu --interactive</div>
-            <div class="cmd-desc">Choose which packages to upgrade</div>
-            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --interactive')">▶ Run</button>
-          </div>
-          <div class="cmd-card" style="border-color:var(--border)">
-            <div class="cmd-name">Only Patch Updates</div>
-            <div class="cmd-code">ncu --target patch</div>
-            <div class="cmd-desc">Only show patch-level updates (safest)</div>
-            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --target patch')">▶ Run</button>
-          </div>
-          <div class="cmd-card" style="border-color:var(--border)">
-            <div class="cmd-name">Only Minor Updates</div>
-            <div class="cmd-code">ncu --target minor</div>
-            <div class="cmd-desc">Show patch + minor updates (no breaking)</div>
-            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --target minor')">▶ Run</button>
           </div>
           <div class="cmd-card" style="border-color:var(--border)">
             <div class="cmd-name">Production Only</div>
@@ -2115,10 +2521,178 @@ header {
             <button class="run-card-btn btn-blue" onclick="runCmd('ncu --dep dev')">▶ Run</button>
           </div>
           <div class="cmd-card" style="border-color:var(--border)">
-            <div class="cmd-name">Upgrade + Install</div>
+            <div class="cmd-name">Patch Only</div>
+            <div class="cmd-code">ncu --target patch</div>
+            <div class="cmd-desc">Show only patch-level updates — safest</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --target patch')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Minor Only</div>
+            <div class="cmd-code">ncu --target minor</div>
+            <div class="cmd-desc">Show patch + minor updates — no breaking changes</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --target minor')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Latest (semver-major)</div>
+            <div class="cmd-code">ncu --target latest</div>
+            <div class="cmd-desc">Show absolutely latest version including major</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --target latest')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Newest Version</div>
+            <div class="cmd-code">ncu --target newest</div>
+            <div class="cmd-desc">Show newest published version (including pre-release)</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --target newest')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">With Peer Deps</div>
+            <div class="cmd-code">ncu --peer</div>
+            <div class="cmd-desc">Include peer dependencies in the check</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --peer')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">JSON Output</div>
+            <div class="cmd-code">ncu --jsonUpgraded</div>
+            <div class="cmd-desc">Output upgradeable packages as JSON</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --jsonUpgraded')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Doctor Mode</div>
+            <div class="cmd-code">ncu --doctor</div>
+            <div class="cmd-desc">Upgrade each package individually and run tests</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --doctor')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Upgrade &amp; Install</div>
+        <div class="cmd-grid" id="ncu-grid-upgrade">
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Upgrade package.json</div>
+            <div class="cmd-code">ncu -u</div>
+            <div class="cmd-desc">Write all updated versions to package.json</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu -u')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Upgrade + npm install</div>
             <div class="cmd-code">ncu -u && npm install</div>
             <div class="cmd-desc">Update package.json then install new versions</div>
             <button class="run-card-btn btn-blue" onclick="runCmd('ncu -u && npm install')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Upgrade + pnpm install</div>
+            <div class="cmd-code">ncu -u && pnpm install</div>
+            <div class="cmd-desc">Update package.json then pnpm install</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu -u && pnpm install')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Upgrade Patch + Install</div>
+            <div class="cmd-code">ncu -u --target patch && npm install</div>
+            <div class="cmd-desc">Upgrade only patch versions then install</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu -u --target patch && npm install')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Upgrade Minor + Install</div>
+            <div class="cmd-code">ncu -u --target minor && npm install</div>
+            <div class="cmd-desc">Upgrade patch + minor versions then install</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu -u --target minor && npm install')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Interactive Upgrade</div>
+            <div class="cmd-code">ncu --interactive --format group</div>
+            <div class="cmd-desc">Select packages to upgrade interactively, grouped</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --interactive --format group')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Upgrade Dev Only</div>
+            <div class="cmd-code">ncu -u --dep dev && npm install</div>
+            <div class="cmd-desc">Upgrade only devDependencies and install</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu -u --dep dev && npm install')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Reject Package</div>
+            <div class="cmd-code">ncu -u --reject lodash</div>
+            <div class="cmd-desc">Upgrade all except a specific package</div>
+            <button class="run-card-btn btn-blue" onclick="ncuUpgradeReject()">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Filter &amp; Format</div>
+        <div class="cmd-grid" id="ncu-grid-filter">
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Filter Package</div>
+            <div class="cmd-code">ncu react</div>
+            <div class="cmd-desc">Check update for a specific package only</div>
+            <button class="run-card-btn btn-blue" onclick="ncuCheck()">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Filter by Scope</div>
+            <div class="cmd-code">ncu "@types/*"</div>
+            <div class="cmd-desc">Check updates for all @types/* packages</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu \"@types/*\"')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Group Format</div>
+            <div class="cmd-code">ncu --format group</div>
+            <div class="cmd-desc">Group updates by major/minor/patch</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --format group')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Minimal Format</div>
+            <div class="cmd-code">ncu --format lines</div>
+            <div class="cmd-desc">Show one package per line — minimal output</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --format lines')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Color Output</div>
+            <div class="cmd-code">ncu --color</div>
+            <div class="cmd-desc">Force colored output in all terminals</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --color')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Verbose</div>
+            <div class="cmd-code">ncu --verbose</div>
+            <div class="cmd-desc">Show more details including skipped packages</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --verbose')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Workspaces &amp; Config</div>
+        <div class="cmd-grid" id="ncu-grid-workspace">
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">All Workspaces</div>
+            <div class="cmd-code">ncu --workspaces</div>
+            <div class="cmd-desc">Check updates across all npm workspaces</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --workspaces')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Upgrade Workspaces</div>
+            <div class="cmd-code">ncu -u --workspaces</div>
+            <div class="cmd-desc">Upgrade package.json across all workspaces</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu -u --workspaces')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Custom Registry</div>
+            <div class="cmd-code">ncu --registry https://registry.npmjs.org</div>
+            <div class="cmd-desc">Check against a specific npm registry</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --registry https://registry.npmjs.org')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Config File</div>
+            <div class="cmd-code">ncu --configFilePath .ncurc.json</div>
+            <div class="cmd-desc">Load ncu options from a config file</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --configFilePath .ncurc.json')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">ncu Version</div>
+            <div class="cmd-code">ncu --version</div>
+            <div class="cmd-desc">Show installed ncu version</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --version')">▶ Run</button>
+          </div>
+          <div class="cmd-card" style="border-color:var(--border)">
+            <div class="cmd-name">Help</div>
+            <div class="cmd-code">ncu --help</div>
+            <div class="cmd-desc">Show all available ncu options</div>
+            <button class="run-card-btn btn-blue" onclick="runCmd('ncu --help')">▶ Run</button>
           </div>
         </div>
       </div>
@@ -2127,7 +2701,7 @@ header {
       <div class="panel" id="panel-nvm">
         <div class="panel-head">
           <div class="panel-title"><div class="dot nvm-dot"></div>nvm</div>
-          <div class="panel-sub">Node Version Manager — switch Node.js versions per project</div>
+          <div class="panel-sub">Node Version Manager — install, switch, and manage Node.js versions · <span style="color:var(--text-dim)">drag cards to reorder</span></div>
         </div>
 
         <div class="section-title">
@@ -2142,17 +2716,24 @@ header {
         </div>
 
         <div class="input-section">
-          <div class="input-label">Install / Switch Version</div>
+          <div class="input-label">Install / Switch / Remove Version</div>
           <div class="input-row">
             <input class="pkg-input" id="nvm-ver" placeholder="20, 18.17.0, lts/iron, latest…" />
             <button class="btn btn-nvm" onclick="nvmInstall()">↓ Install</button>
             <button class="btn btn-blue" onclick="nvmUse()">⇒ Use</button>
+            <button class="btn btn-blue" onclick="nvmAlias()">🏷 Alias</button>
             <button class="btn btn-red" onclick="nvmUninstall()">✕ Remove</button>
+          </div>
+          <div class="input-row" style="margin-top:7px">
+            <input class="pkg-input" id="nvm-script" placeholder="script.js or npm command to exec…" style="max-width:280px" />
+            <button class="btn btn-nvm" onclick="nvmExec()">▶ exec</button>
+            <button class="btn btn-blue" onclick="nvmRun()">▶ run</button>
+            <button class="btn btn-blue" onclick="nvmWhich()">? which</button>
           </div>
         </div>
 
-        <div class="section-title">nvm Commands</div>
-        <div class="cmd-grid">
+        <div class="section-title">Use &amp; Switch</div>
+        <div class="cmd-grid" id="nvm-grid-use">
           <div class="cmd-card nvm-card">
             <div class="cmd-name">List Installed</div>
             <div class="cmd-code" id="nvm-list-cmd">nvm list</div>
@@ -2160,34 +2741,234 @@ header {
             <button class="run-card-btn btn-nvm" onclick="runCmd(window._nvmListCmd||'nvm list')">▶ Run</button>
           </div>
           <div class="cmd-card nvm-card">
-            <div class="cmd-name">List Available</div>
-            <div class="cmd-code" id="nvm-avail-cmd">nvm list available</div>
-            <div class="cmd-desc">Browse available Node.js versions (remote)</div>
-            <button class="run-card-btn btn-nvm" onclick="runCmd(window._nvmAvailCmd||'nvm list available')">▶ Run</button>
+            <div class="cmd-name">Current Version</div>
+            <div class="cmd-code">node -v</div>
+            <div class="cmd-desc">Show the currently active Node.js version</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('node -v')">▶ Run</button>
           </div>
           <div class="cmd-card nvm-card">
-            <div class="cmd-name">Install Latest LTS</div>
-            <div class="cmd-code">nvm install --lts</div>
-            <div class="cmd-desc">Install the latest LTS Node.js version</div>
-            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm install --lts')">▶ Run</button>
-          </div>
-          <div class="cmd-card nvm-card">
-            <div class="cmd-name">Use LTS</div>
+            <div class="cmd-name">Use Latest LTS</div>
             <div class="cmd-code">nvm use --lts</div>
-            <div class="cmd-desc">Switch to latest LTS version</div>
+            <div class="cmd-desc">Switch to the latest LTS version</div>
             <button class="run-card-btn btn-nvm" onclick="runCmd('nvm use --lts')">▶ Run</button>
           </div>
           <div class="cmd-card nvm-card">
-            <div class="cmd-name">Set Default Version</div>
-            <div class="cmd-code" id="nvm-default-cmd">nvm use [version]</div>
-            <div class="cmd-desc">Set the active/default Node.js version</div>
-            <button class="run-card-btn btn-nvm" onclick="nvmUse()">⇒ Use Selected</button>
+            <div class="cmd-name">Use Latest</div>
+            <div class="cmd-code">nvm use node</div>
+            <div class="cmd-desc">Switch to the absolute latest Node.js</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm use node')">▶ Run</button>
           </div>
           <div class="cmd-card nvm-card">
-            <div class="cmd-name">Current Version</div>
-            <div class="cmd-code" id="nvm-current-cmd">node -v</div>
-            <div class="cmd-desc">Show active Node.js version</div>
-            <button class="run-card-btn btn-nvm" onclick="runCmd('node -v && nvm current')">▶ Run</button>
+            <div class="cmd-name">Use System Node</div>
+            <div class="cmd-code">nvm use system</div>
+            <div class="cmd-desc">Revert to system-installed Node.js (Unix)</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm use system')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">npm Version</div>
+            <div class="cmd-code">npm -v</div>
+            <div class="cmd-desc">Show npm version bundled with active Node</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('npm -v')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">node + npm Versions</div>
+            <div class="cmd-code">node -v && npm -v</div>
+            <div class="cmd-desc">Display both Node.js and npm versions</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('node -v && npm -v')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Which Node</div>
+            <div class="cmd-code">nvm which current</div>
+            <div class="cmd-desc">Show path to active Node.js executable</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm which current')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Install &amp; Remove</div>
+        <div class="cmd-grid" id="nvm-grid-install">
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Install Latest LTS</div>
+            <div class="cmd-code">nvm install --lts</div>
+            <div class="cmd-desc">Install the latest LTS Node.js release</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm install --lts')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Install Latest</div>
+            <div class="cmd-code">nvm install node</div>
+            <div class="cmd-desc">Install the absolute latest Node.js version</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm install node')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Install LTS Iron (v20)</div>
+            <div class="cmd-code">nvm install lts/iron</div>
+            <div class="cmd-desc">Install Node.js 20 LTS (Iron)</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm install lts/iron')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Install LTS Hydrogen (v18)</div>
+            <div class="cmd-code">nvm install lts/hydrogen</div>
+            <div class="cmd-desc">Install Node.js 18 LTS (Hydrogen)</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm install lts/hydrogen')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Install + Migrate</div>
+            <div class="cmd-code">nvm install node --reinstall-packages-from=current</div>
+            <div class="cmd-desc">Install latest and copy global packages (Unix)</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm install node --reinstall-packages-from=current')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Reinstall Packages</div>
+            <div class="cmd-code">nvm reinstall-packages &lt;from&gt;</div>
+            <div class="cmd-desc">Copy global npm packages from another version (Unix)</div>
+            <button class="run-card-btn btn-nvm" onclick="nvmReinstall()">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Uninstall Version</div>
+            <div class="cmd-code">nvm uninstall &lt;version&gt;</div>
+            <div class="cmd-desc">Remove a specific installed Node version</div>
+            <button class="run-card-btn btn-nvm" onclick="nvmUninstall()">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Remote Versions</div>
+        <div class="cmd-grid" id="nvm-grid-remote">
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">List Available</div>
+            <div class="cmd-code" id="nvm-avail-cmd">nvm list available</div>
+            <div class="cmd-desc">Browse all downloadable Node.js versions</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd(window._nvmAvailCmd||'nvm list available')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">List LTS (remote)</div>
+            <div class="cmd-code">nvm ls-remote --lts</div>
+            <div class="cmd-desc">Show only LTS releases available (Unix)</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm ls-remote --lts')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">All Remote</div>
+            <div class="cmd-code">nvm ls-remote</div>
+            <div class="cmd-desc">List all available versions from remote (Unix)</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm ls-remote')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Latest LTS name</div>
+            <div class="cmd-code">nvm version-remote --lts</div>
+            <div class="cmd-desc">Show the latest LTS version number (Unix)</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm version-remote --lts')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Aliases</div>
+        <div class="cmd-grid" id="nvm-grid-alias">
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">List Aliases</div>
+            <div class="cmd-code">nvm alias</div>
+            <div class="cmd-desc">Show all defined version aliases (Unix)</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm alias')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Set Default</div>
+            <div class="cmd-code">nvm alias default &lt;version&gt;</div>
+            <div class="cmd-desc">Set persistent default Node version (Unix)</div>
+            <button class="run-card-btn btn-nvm" onclick="nvmAliasDefault()">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Default → LTS</div>
+            <div class="cmd-code">nvm alias default lts/*</div>
+            <div class="cmd-desc">Always use latest LTS as default (Unix)</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm alias default lts/*')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Default → Latest</div>
+            <div class="cmd-code">nvm alias default node</div>
+            <div class="cmd-desc">Always use latest stable as default (Unix)</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm alias default node')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Custom Alias</div>
+            <div class="cmd-code">nvm alias &lt;name&gt; &lt;version&gt;</div>
+            <div class="cmd-desc">Create a named alias for a version (Unix)</div>
+            <button class="run-card-btn btn-nvm" onclick="nvmAlias()">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Remove Alias</div>
+            <div class="cmd-code">nvm unalias &lt;name&gt;</div>
+            <div class="cmd-desc">Delete a custom alias (Unix)</div>
+            <button class="run-card-btn btn-nvm" onclick="nvmUnalias()">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">Execute &amp; Project</div>
+        <div class="cmd-grid" id="nvm-grid-exec">
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Exec with Version</div>
+            <div class="cmd-code">nvm exec &lt;version&gt; node script.js</div>
+            <div class="cmd-desc">Run a script with a specific Node version (Unix)</div>
+            <button class="run-card-btn btn-nvm" onclick="nvmExec()">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Run with Version</div>
+            <div class="cmd-code">nvm run &lt;version&gt; script.js</div>
+            <div class="cmd-desc">Run Node script directly with specific version (Unix)</div>
+            <button class="run-card-btn btn-nvm" onclick="nvmRun()">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Create .nvmrc</div>
+            <div class="cmd-code">node -v &gt; .nvmrc</div>
+            <div class="cmd-desc">Save current version to .nvmrc for auto-switching</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('node -v > .nvmrc')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Use from .nvmrc</div>
+            <div class="cmd-code">nvm use</div>
+            <div class="cmd-desc">Auto-switch to version defined in .nvmrc (Unix)</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm use')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">Install from .nvmrc</div>
+            <div class="cmd-code">nvm install</div>
+            <div class="cmd-desc">Install the version specified in .nvmrc (Unix)</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm install')">▶ Run</button>
+          </div>
+        </div>
+
+        <div class="section-title">nvm-windows &amp; Info</div>
+        <div class="cmd-grid" id="nvm-grid-info">
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">nvm on</div>
+            <div class="cmd-code">nvm on</div>
+            <div class="cmd-desc">Enable nvm version management (Windows)</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm on')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">nvm off</div>
+            <div class="cmd-code">nvm off</div>
+            <div class="cmd-desc">Disable nvm, revert to system Node (Windows)</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm off')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">nvm Root</div>
+            <div class="cmd-code">nvm root</div>
+            <div class="cmd-desc">Show nvm installation directory (Windows)</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm root')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">nvm Version</div>
+            <div class="cmd-code">nvm --version</div>
+            <div class="cmd-desc">Display current nvm version</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm --version')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">nvm Help</div>
+            <div class="cmd-code">nvm --help</div>
+            <div class="cmd-desc">Show all available nvm commands</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('nvm --help')">▶ Run</button>
+          </div>
+          <div class="cmd-card nvm-card">
+            <div class="cmd-name">node Path</div>
+            <div class="cmd-code">where node</div>
+            <div class="cmd-desc">Show full path of active node executable</div>
+            <button class="run-card-btn btn-nvm" onclick="runCmd('where node 2>/dev/null || which node')">▶ Run</button>
           </div>
         </div>
       </div>
@@ -2196,7 +2977,20 @@ header {
       <div class="panel" id="panel-pkgjson">
         <div class="panel-head">
           <div class="panel-title"><div class="dot json-dot"></div>package.json Editor</div>
-          <div class="panel-sub">Visual editor — loads from your working directory</div>
+          <div class="panel-sub">Visual editor + Scripts Runner — loads from your working directory</div>
+        </div>
+
+        <!-- Scripts Runner -->
+        <div id="pkg-scripts-runner" style="display:none;margin-bottom:18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+            <div class="section-title" style="margin:0">Scripts Runner</div>
+            <div class="deps-filter-bar" id="script-pm-bar">
+              <button class="deps-filter active" data-pm="npm" onclick="setScriptPm('npm')">npm</button>
+              <button class="deps-filter" data-pm="pnpm" onclick="setScriptPm('pnpm')">pnpm</button>
+              <button class="deps-filter" data-pm="bun" onclick="setScriptPm('bun')">bun</button>
+            </div>
+          </div>
+          <div class="cmd-grid" id="pkg-scripts-grid"></div>
         </div>
 
         <div class="pkg-editor">
@@ -2733,10 +3527,41 @@ function npmInstallDev() {
   runCmd(`npm install --save-dev ${pkg} ${flags}`.trim());
 }
 
+function npmInstallOptional() {
+  const pkg = document.getElementById('npm-pkg').value.trim();
+  const flags = getFlags(document.getElementById('panel-npm'));
+  if (!pkg) { notify('warn', 'No package', 'Enter a package name first'); return; }
+  runCmd(`npm install --save-optional ${pkg} ${flags}`.trim());
+}
+
 function npmUninstall() {
   const pkg = document.getElementById('npm-pkg').value.trim();
   if (!pkg) { notify('warn', 'No package', 'Enter a package name to remove'); return; }
   runCmd(`npm uninstall ${pkg}`);
+}
+
+function npmInfo() {
+  const pkg = document.getElementById('npm-pkg2').value.trim() || document.getElementById('npm-pkg').value.trim();
+  if (!pkg) { notify('warn', 'No package', 'Enter a package name to inspect'); return; }
+  runCmd(`npm info ${pkg}`);
+}
+
+function npmExplain() {
+  const pkg = document.getElementById('npm-pkg2').value.trim() || document.getElementById('npm-pkg').value.trim();
+  if (!pkg) { notify('warn', 'No package', 'Enter a package name to explain'); return; }
+  runCmd(`npm explain ${pkg}`);
+}
+
+function npmNpx() {
+  const pkg = document.getElementById('npm-pkg2').value.trim() || document.getElementById('npm-pkg').value.trim();
+  if (!pkg) { notify('warn', 'No package', 'Enter a package name to run with npx'); return; }
+  runCmd(`npx ${pkg}`);
+}
+
+function npmSearch() {
+  const pkg = document.getElementById('npm-pkg2').value.trim() || document.getElementById('npm-pkg').value.trim();
+  if (!pkg) { notify('warn', 'No keyword', 'Enter a search keyword'); return; }
+  runCmd(`npm search ${pkg}`);
 }
 
 // ── PNPM ACTIONS ───────────────────────────────────────────────────
@@ -3173,6 +3998,51 @@ function nvmUninstall() {
   runCmd(`nvm uninstall ${v}`);
 }
 
+function nvmAlias() {
+  const v = document.getElementById('nvm-ver').value.trim();
+  if (!v) { notify('warn', 'No version', 'Enter a version or alias name'); return; }
+  runCmd(`nvm alias default ${v}`);
+}
+
+function nvmAliasDefault() {
+  const v = document.getElementById('nvm-ver').value.trim();
+  if (!v) { notify('warn', 'No version', 'Enter a version to set as default'); return; }
+  runCmd(`nvm alias default ${v}`);
+}
+
+function nvmUnalias() {
+  const v = document.getElementById('nvm-ver').value.trim();
+  if (!v) { notify('warn', 'No alias', 'Enter the alias name to remove'); return; }
+  runCmd(`nvm unalias ${v}`);
+}
+
+function nvmExec() {
+  const v = document.getElementById('nvm-ver').value.trim();
+  const s = document.getElementById('nvm-script').value.trim();
+  if (!v) { notify('warn', 'No version', 'Enter a version to exec with'); return; }
+  const script = s || 'node -v';
+  runCmd(`nvm exec ${v} ${script}`);
+}
+
+function nvmRun() {
+  const v = document.getElementById('nvm-ver').value.trim();
+  const s = document.getElementById('nvm-script').value.trim();
+  if (!v) { notify('warn', 'No version', 'Enter a version to run with'); return; }
+  if (!s) { notify('warn', 'No script', 'Enter a script file to run'); return; }
+  runCmd(`nvm run ${v} ${s}`);
+}
+
+function nvmWhich() {
+  const v = document.getElementById('nvm-ver').value.trim() || 'current';
+  runCmd(`nvm which ${v}`);
+}
+
+function nvmReinstall() {
+  const v = document.getElementById('nvm-ver').value.trim();
+  if (!v) { notify('warn', 'No version', 'Enter the source version to copy packages from'); return; }
+  runCmd(`nvm reinstall-packages ${v}`);
+}
+
 // ── PACKAGE.JSON ───────────────────────────────────────────────────
 async function loadPkgJson() {
   if (!wsReady) { notify('warn', 'Not connected', 'Server required'); return; }
@@ -3217,6 +4087,57 @@ async function savePkgJson() {
   } catch(e) {
     notify('error', 'Error', e.message);
   }
+}
+
+// ── SCRIPTS RUNNER ──────────────────────────────────────────────────
+let _scriptPm = localStorage.getItem('nc-script-pm') || 'npm';
+
+function setScriptPm(pm) {
+  _scriptPm = pm;
+  localStorage.setItem('nc-script-pm', pm);
+  document.querySelectorAll('#script-pm-bar .deps-filter').forEach(b => b.classList.toggle('active', b.dataset.pm === pm));
+  if (pkgJsonData) renderPkgScripts(pkgJsonData.scripts || {});
+}
+
+function renderPkgScripts(scripts) {
+  const runner = document.getElementById('pkg-scripts-runner');
+  const grid = document.getElementById('pkg-scripts-grid');
+  const entries = Object.entries(scripts);
+  if (!entries.length) { runner.style.display = 'none'; return; }
+  runner.style.display = '';
+  // Restore pm filter state
+  document.querySelectorAll('#script-pm-bar .deps-filter').forEach(b => b.classList.toggle('active', b.dataset.pm === _scriptPm));
+  const pmColors = { npm: 'var(--accent-npm)', pnpm: 'var(--accent-pnpm)', bun: 'var(--accent-bun)' };
+  const color = pmColors[_scriptPm] || 'var(--accent)';
+  grid.innerHTML = entries.map(([name, cmd]) => {
+    const runCmd_ = _scriptPm === 'npm' ? `npm run ${name}` : `${_scriptPm} run ${name}`;
+    // Special shortcuts: dev, build, start, test don't need "run" for npm
+    const shortCmd = _scriptPm === 'npm' && ['start','test','stop','restart'].includes(name) ? `npm ${name}` : runCmd_;
+    const safeCmd = shortCmd.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    return `<div class="cmd-card" style="border-color:var(--border)">
+      <div class="cmd-name">${escHtml(name)}</div>
+      <div class="cmd-code" style="font-size:10px">${escHtml(cmd.length > 60 ? cmd.slice(0,60)+'…' : cmd)}</div>
+      <div style="display:flex;gap:6px;margin-top:auto">
+        <button class="run-card-btn" style="background:rgba(128,128,128,.1);color:${color};flex:1" onclick="runCmd('${safeCmd}')">▶ ${escHtml(name)}</button>
+        <button class="run-card-btn" style="background:rgba(128,128,128,.08);color:var(--text-muted);padding:4px 7px" title="Run in terminal 2" onclick="runCmd2('${safeCmd}')">2</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function ncuUpgradeReject() {
+  const f = document.getElementById('ncu-filter').value.trim();
+  if (!f) { notify('warn', 'No package', 'Enter a package name to reject'); return; }
+  runCmd(`ncu -u --reject ${f}`);
+}
+
+function nodemonExec() {
+  const entry = document.getElementById('nodemon-entry').value.trim();
+  const exec_ = document.getElementById('nodemon-exec').value.trim();
+  const flags = getFlags(document.getElementById('panel-nodemon'));
+  if (!exec_) { notify('warn', 'No executor', 'Enter an executor like ts-node or babel-node'); return; }
+  const file = entry || 'index.js';
+  runCmd(`nodemon --exec ${exec_} ${file} ${flags}`.trim());
 }
 
 function renderPkgEditor(data) {
@@ -3274,6 +4195,7 @@ function renderPkgEditor(data) {
       ${scriptsHtml}
     </div>
   `;
+  renderPkgScripts(data.scripts || {});
 }
 
 function updateDep(name, type) {
