@@ -340,13 +340,23 @@ function handleRun(ws, msg) {
 
   let proc;
   try {
-    // shell:true on both platforms — Node resolves the shell executable automatically.
-    // On Windows this uses cmd.exe; on Unix it uses /bin/sh.
-    // We pass the raw command string so the shell parses it correctly.
-    proc = spawn(cmd, [], {
+    // Untuk Unix: gunakan bash agar nvm bisa diakses via source nvm.sh
+    // Untuk Windows: shell:true cukup (cmd.exe)
+    let shellOpt;
+    let cmdFinal = cmd.trim();
+    if (isWin) {
+      shellOpt = true;
+    } else {
+      shellOpt = '/bin/bash';
+      // Inject nvm loader di depan setiap command agar nvm tersedia
+      const nvmDir = process.env.NVM_DIR || `${require('os').homedir()}/.nvm`;
+      cmdFinal = `source "${nvmDir}/nvm.sh" 2>/dev/null; ${cmd.trim()}`;
+    }
+
+    proc = spawn(cmdFinal, [], {
       cwd: workDir,
       env: { ...process.env },
-      shell: true,
+      shell: shellOpt,
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: isWin
     });
@@ -499,25 +509,35 @@ function getNvmVersions(cb) {
   const parseVersions = (stdout) => {
     const lines = (stdout || '').split('\n');
     const versions = [];
+    const seen = new Set();
+
     if (isWin) {
       // nvm-windows output:  "    24.14.0" or "  * 22.22.1 (Currently using 64-bit executable)"
       lines.forEach(line => {
-        // Strip ANSI escape codes
         const clean = line.replace(/\x1b\[[0-9;]*m/g, '').replace(/[^\x20-\x7E]/g, '');
         const isCurrent = clean.includes('*');
         const match = clean.match(/(\d+\.\d+\.\d+)/);
-        if (match) {
+        if (match && !seen.has(match[1])) {
+          seen.add(match[1]);
           versions.push({ version: match[1], current: isCurrent, lts: getLtsName(match[1]) });
         }
       });
     } else {
       lines.forEach(line => {
-        const clean = line.replace(/\x1b\[[0-9;]*m/g, '');
-        const isCurrent = clean.includes('->');
+        const clean = line.replace(/\x1b\[[0-9;]*m/g, '').replace(/\*/g, '').trim();
+
+        // Skip alias lines: mengandung "->" di tengah (bukan di awal), atau "(-> N/A)"
+        // Baris versi asli hanya: "    v22.22.1" atau "->     v22.22.1"
+        // Baris alias: "default -> 22", "lts/iron -> v20.20.1", "node -> stable -> ..."
+        if (clean.includes('-> N/A')) return;  // versi tidak terinstall
+        if (/^lts\//.test(clean)) return;       // baris alias lts/*
+        if (/^(default|node|stable|unstable|iojs)\s/.test(clean)) return; // baris alias named
+
+        const isCurrent = clean.startsWith('->');
         const match = clean.match(/v?(\d+\.\d+\.\d+)/);
-        if (match) {
-          const ltsMatch = clean.match(/lts\/(\w+)/i);
-          versions.push({ version: match[1], current: isCurrent, lts: ltsMatch ? ltsMatch[1] : getLtsName(match[1]) });
+        if (match && !seen.has(match[1])) {
+          seen.add(match[1]);
+          versions.push({ version: match[1], current: isCurrent, lts: getLtsName(match[1]) });
         }
       });
     }
@@ -534,16 +554,16 @@ function getNvmVersions(cb) {
   };
 
   if (isWin) {
-    // shell:true is the key — lets exec find cmd.exe/nvm via PATH
     exec('nvm list', { timeout: 8000, env: process.env, shell: true, windowsHide: true }, (err, stdout) => {
       if (err && !stdout) return cb(new Error('nvm not found. Make sure nvm-windows is installed.'));
       const versions = parseVersions(stdout);
       cb(null, { versions, isWin, ...getToolVersions() });
     });
   } else {
-    const cmd = 'source ~/.nvm/nvm.sh 2>/dev/null; source ~/.config/nvm/nvm.sh 2>/dev/null; nvm ls --no-colors 2>/dev/null';
-    exec(cmd, { timeout: 8000, env: process.env, shell: '/bin/bash' }, (err, stdout) => {
-      if (err && !stdout) return cb(new Error('nvm not found.'));
+    const nvmDir = process.env.NVM_DIR || `${require('os').homedir()}/.nvm`;
+    const cmd = `source "${nvmDir}/nvm.sh" 2>/dev/null && nvm ls --no-colors 2>/dev/null`;
+    exec(cmd, { timeout: 10000, env: process.env, shell: '/bin/bash' }, (err, stdout) => {
+      if (err && !stdout) return cb(new Error('nvm not found. Make sure nvm is installed and NVM_DIR is set.'));
       const versions = parseVersions(stdout);
       cb(null, { versions, isWin, ...getToolVersions() });
     });
