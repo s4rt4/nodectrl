@@ -39,6 +39,7 @@
   --t-orange:      #ffa657;
   --shadow:        rgba(0,0,0,0.5);
   --grid-color:    rgba(124,107,255,0.03);
+  --caret:         #ffffff;
 }
 
 [data-theme="light"] {
@@ -65,10 +66,12 @@
   --t-orange:      #c05010;
   --shadow:        rgba(0,0,0,0.12);
   --grid-color:    rgba(90,74,240,0.04);
+  --caret:         #000000;
 }
 
 /* ── RESET & BASE ─────────────────────────────────────────────── */
 *{margin:0;padding:0;box-sizing:border-box}
+input, textarea, [contenteditable] { caret-color: var(--caret); }
 
 html, body {
   height: 100%;
