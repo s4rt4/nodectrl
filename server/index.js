@@ -17,11 +17,11 @@ const PUBLIC_DIR = path.join(__dirname, '../public');
 // ─── MIME TYPES ──────────────────────────────────────────────────────────────
 const MIME = {
   '.html': 'text/html; charset=utf-8',
-  '.js':   'application/javascript',
-  '.css':  'text/css',
+  '.js': 'application/javascript',
+  '.css': 'text/css',
   '.json': 'application/json',
-  '.png':  'image/png',
-  '.ico':  'image/x-icon',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon',
 };
 
 // ─── ACTIVE PROCESSES ────────────────────────────────────────────────────────
@@ -60,7 +60,7 @@ const server = http.createServer((req, res) => {
         fs.writeFileSync(pkgPath, body, 'utf8');
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ ok: true }));
-      } catch(e) {
+      } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: e.message }));
       }
@@ -89,7 +89,7 @@ const server = http.createServer((req, res) => {
       const raw = fs.readFileSync(envPath, 'utf8');
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify({ ok: true, content: raw, path: envPath }));
-    } catch(e) {
+    } catch (e) {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify({ ok: false, error: 'File not found', path: envPath }));
     }
@@ -109,7 +109,7 @@ const server = http.createServer((req, res) => {
         fs.writeFileSync(envPath, body, 'utf8');
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ ok: true }));
-      } catch(e) {
+      } catch (e) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: e.message }));
       }
@@ -140,7 +140,7 @@ const server = http.createServer((req, res) => {
           res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
           res.end(JSON.stringify(err ? { ok: false, error: err.message } : { ok: true }));
         });
-      } catch(e) {
+      } catch (e) {
         res.writeHead(400); res.end(JSON.stringify({ error: e.message }));
       }
     });
@@ -172,7 +172,7 @@ const server = http.createServer((req, res) => {
         saveWorkspaces(JSON.parse(body));
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ ok: true }));
-      } catch(e) {
+      } catch (e) {
         res.writeHead(400); res.end(JSON.stringify({ error: e.message }));
       }
     });
@@ -220,7 +220,7 @@ const server = http.createServer((req, res) => {
       const tail = all.slice(-lines).join('\n');
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify({ ok: true, content: tail, total: all.length }));
-    } catch(e) {
+    } catch (e) {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify({ ok: false, error: e.message }));
     }
@@ -243,7 +243,7 @@ const server = http.createServer((req, res) => {
     const params = new URLSearchParams(req.url.split('?')[1] || '');
     const id = params.get('id');
     if (id && activeProcs.has(id)) {
-      try { activeProcs.get(id).kill('SIGTERM'); } catch(e) {}
+      try { activeProcs.get(id).kill('SIGTERM'); } catch (e) { }
       activeProcs.delete(id);
     }
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -286,7 +286,7 @@ attachWebSocket(server, (ws) => {
 
   ws.on('message', (raw) => {
     let msg;
-    try { msg = JSON.parse(raw); } catch(e) { return; }
+    try { msg = JSON.parse(raw); } catch (e) { return; }
 
     if (msg.type === 'run') handleRun(ws, msg);
     else if (msg.type === 'kill') handleKill(ws, msg);
@@ -317,7 +317,7 @@ function resolveCwd(reqCwd) {
   try {
     const stat = fs.statSync(dir);
     if (stat.isDirectory()) return dir;
-  } catch(e) {}
+  } catch (e) { }
 
   // Fallback: use the directory the server was started from
   return process.cwd();
@@ -360,7 +360,7 @@ function handleRun(ws, msg) {
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: isWin
     });
-  } catch(e) {
+  } catch (e) {
     ws.send(JSON.stringify({ type: 'error', id, text: `Failed to spawn: ${e.message}` }));
     return;
   }
@@ -394,7 +394,7 @@ function handleRun(ws, msg) {
 function handleKill(ws, msg) {
   const { id } = msg;
   if (activeProcs.has(id)) {
-    try { activeProcs.get(id).kill('SIGTERM'); } catch(e) {}
+    try { activeProcs.get(id).kill('SIGTERM'); } catch (e) { }
     activeProcs.delete(id);
     ws.send(JSON.stringify({ type: 'killed', id }));
   }
@@ -409,52 +409,54 @@ function handleCwd(ws, msg) {
     } else {
       ws.send(JSON.stringify({ type: 'error', id: msg.id, text: `Not a directory: ${dir}` }));
     }
-  } catch(e) {
+  } catch (e) {
     ws.send(JSON.stringify({ type: 'error', id: msg.id, text: `Directory not found: ${dir}` }));
   }
 }
 
 // ─── PROJECT SCANNER ──────────────────────────────────────────────────────────
 function scanProject(dir) {
-  const result = { dir, hasPkg: false, hasEnv: false, envFiles: [],
+  const result = {
+    dir, hasPkg: false, hasEnv: false, envFiles: [],
     packageManager: null, name: null, version: null, scripts: {},
-    deps: 0, devDeps: 0, frameworks: [], nodeVersion: null };
+    deps: 0, devDeps: 0, frameworks: [], nodeVersion: null
+  };
   try {
     const files = fs.readdirSync(dir);
-    if (files.includes('pnpm-lock.yaml'))        result.packageManager = 'pnpm';
-    else if (files.includes('yarn.lock'))         result.packageManager = 'yarn';
+    if (files.includes('pnpm-lock.yaml')) result.packageManager = 'pnpm';
+    else if (files.includes('yarn.lock')) result.packageManager = 'yarn';
     else if (files.includes('package-lock.json')) result.packageManager = 'npm';
     if (files.includes('.nvmrc')) {
-      try { result.nodeVersion = fs.readFileSync(path.join(dir, '.nvmrc'), 'utf8').trim(); } catch(e) {}
+      try { result.nodeVersion = fs.readFileSync(path.join(dir, '.nvmrc'), 'utf8').trim(); } catch (e) { }
     }
     result.envFiles = files.filter(f => f === '.env' || f.startsWith('.env.'));
     result.hasEnv = result.envFiles.length > 0;
     if (files.includes('package.json')) {
       result.hasPkg = true;
       const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
-      result.name    = pkg.name    || path.basename(dir);
+      result.name = pkg.name || path.basename(dir);
       result.version = pkg.version || '0.0.0';
-      result.scripts  = pkg.scripts  || {};
-      result.deps     = Object.keys(pkg.dependencies    || {}).length;
-      result.devDeps  = Object.keys(pkg.devDependencies || {}).length;
+      result.scripts = pkg.scripts || {};
+      result.deps = Object.keys(pkg.dependencies || {}).length;
+      result.devDeps = Object.keys(pkg.devDependencies || {}).length;
       if (!result.packageManager) result.packageManager = 'npm';
       const all = { ...pkg.dependencies, ...pkg.devDependencies };
       const fw = [];
-      if (all['react'])       fw.push({ name:'React',      icon:'⚛' });
-      if (all['vue'])         fw.push({ name:'Vue',        icon:'💚' });
-      if (all['svelte'])      fw.push({ name:'Svelte',     icon:'🔥' });
-      if (all['next'])        fw.push({ name:'Next.js',    icon:'▲' });
-      if (all['nuxt'])        fw.push({ name:'Nuxt',       icon:'💚' });
-      if (all['express'])     fw.push({ name:'Express',    icon:'🚂' });
-      if (all['fastify'])     fw.push({ name:'Fastify',    icon:'⚡' });
-      if (all['typescript'] || all['ts-node']) fw.push({ name:'TypeScript', icon:'🔷' });
-      if (all['vite'])        fw.push({ name:'Vite',       icon:'⚡' });
-      if (all['webpack'])     fw.push({ name:'Webpack',    icon:'📦' });
-      if (all['tailwindcss']) fw.push({ name:'Tailwind',   icon:'🎨' });
-      if (all['electron'])    fw.push({ name:'Electron',   icon:'⚛' });
+      if (all['react']) fw.push({ name: 'React', icon: '⚛' });
+      if (all['vue']) fw.push({ name: 'Vue', icon: '💚' });
+      if (all['svelte']) fw.push({ name: 'Svelte', icon: '🔥' });
+      if (all['next']) fw.push({ name: 'Next.js', icon: '▲' });
+      if (all['nuxt']) fw.push({ name: 'Nuxt', icon: '💚' });
+      if (all['express']) fw.push({ name: 'Express', icon: '🚂' });
+      if (all['fastify']) fw.push({ name: 'Fastify', icon: '⚡' });
+      if (all['typescript'] || all['ts-node']) fw.push({ name: 'TypeScript', icon: '🔷' });
+      if (all['vite']) fw.push({ name: 'Vite', icon: '⚡' });
+      if (all['webpack']) fw.push({ name: 'Webpack', icon: '📦' });
+      if (all['tailwindcss']) fw.push({ name: 'Tailwind', icon: '🎨' });
+      if (all['electron']) fw.push({ name: 'Electron', icon: '⚛' });
       result.frameworks = fw;
     }
-  } catch(e) { result.error = e.message; }
+  } catch (e) { result.error = e.message; }
   return result;
 }
 
@@ -462,7 +464,7 @@ function scanProject(dir) {
 function getActivePorts(cb) {
   const { exec } = require('child_process');
   const isWin = process.platform === 'win32';
-  const DEV_PORTS = new Set([3000,3001,3002,4000,4200,5000,5173,5174,8000,8080,8081,8888,9000,9229]);
+  const DEV_PORTS = new Set([3000, 3001, 3002, 4000, 4200, 5000, 5173, 5174, 8000, 8080, 8081, 8888, 9000, 9229]);
 
   if (isWin) {
     exec('netstat -ano', { shell: true, windowsHide: true, timeout: 8000 }, (err, stdout) => {
@@ -479,24 +481,24 @@ function getActivePorts(cb) {
           }
         }
       });
-      cb(null, ports.sort((a,b) => a.port - b.port).slice(0,80));
+      cb(null, ports.sort((a, b) => a.port - b.port).slice(0, 80));
     });
   } else {
-    exec("ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null", { shell:'/bin/bash', timeout:8000 }, (err, stdout) => {
+    exec("ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null", { shell: '/bin/bash', timeout: 8000 }, (err, stdout) => {
       if (err && !stdout) return cb(err);
       const ports = [], seen = new Set();
-      (stdout||'').split('\n').forEach(line => {
+      (stdout || '').split('\n').forEach(line => {
         const m = line.match(/[:\s](\d{2,5})\s/);
         const pidM = line.match(/pid=(\d+)/);
         if (m) {
           const port = parseInt(m[1]), pid = pidM ? parseInt(pidM[1]) : null;
           if (!seen.has(port) && port > 0 && port < 65536) {
             seen.add(port);
-            ports.push({ port, state:'LISTENING', pid, dev: DEV_PORTS.has(port) });
+            ports.push({ port, state: 'LISTENING', pid, dev: DEV_PORTS.has(port) });
           }
         }
       });
-      cb(null, ports.sort((a,b) => a.port - b.port).slice(0,80));
+      cb(null, ports.sort((a, b) => a.port - b.port).slice(0, 80));
     });
   }
 }
@@ -548,8 +550,8 @@ function getNvmVersions(cb) {
   const getToolVersions = () => {
     const { execSync } = require('child_process');
     let nodeVer = '', npmVer = '';
-    try { nodeVer = execSync('node --version', { timeout: 3000, windowsHide: true }).toString().trim(); } catch(e) {}
-    try { npmVer  = execSync('npm --version',  { timeout: 3000, windowsHide: true }).toString().trim(); } catch(e) {}
+    try { nodeVer = execSync('node --version', { timeout: 3000, windowsHide: true }).toString().trim(); } catch (e) { }
+    try { npmVer = execSync('npm --version', { timeout: 3000, windowsHide: true }).toString().trim(); } catch (e) { }
     return { nodeVer, npmVer };
   };
 
@@ -582,12 +584,12 @@ const os = require('os');
 const WORKSPACES_PATH = path.join(os.homedir(), '.nodectrl', 'workspaces.json');
 
 function loadWorkspaces() {
-  try { return JSON.parse(fs.readFileSync(WORKSPACES_PATH, 'utf8')); } catch(e) { return []; }
+  try { return JSON.parse(fs.readFileSync(WORKSPACES_PATH, 'utf8')); } catch (e) { return []; }
 }
 
 function saveWorkspaces(list) {
   const dir = path.dirname(WORKSPACES_PATH);
-  try { fs.mkdirSync(dir, { recursive: true }); } catch(e) {}
+  try { fs.mkdirSync(dir, { recursive: true }); } catch (e) { }
   fs.writeFileSync(WORKSPACES_PATH, JSON.stringify(list, null, 2), 'utf8');
 }
 
@@ -598,7 +600,7 @@ function getGitInfo(dir, cb) {
   const q = isWin ? '"' : "'";
 
   const checkGit = (d) => {
-    try { return fs.statSync(path.join(d, '.git')).isDirectory(); } catch(e) { return false; }
+    try { return fs.statSync(path.join(d, '.git')).isDirectory(); } catch (e) { return false; }
   };
 
   let gitDir = dir, found = checkGit(gitDir);
@@ -634,7 +636,7 @@ function detectPackageManager(dir) {
     if (files.includes('pnpm-lock.yaml') || files.includes('pnpm-workspace.yaml')) return 'pnpm';
     if (files.includes('bun.lockb') || files.includes('bun.lock')) return 'bun';
     if (files.includes('yarn.lock')) return 'yarn';
-  } catch(e) {}
+  } catch (e) { }
   return 'npm';
 }
 
@@ -643,32 +645,32 @@ function getDepsInfo(dir, cb) {
   const pkgPath = path.join(dir, 'package.json');
   let pkg;
   try { pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8')); }
-  catch(e) { return cb(new Error('No package.json found in ' + dir)); }
+  catch (e) { return cb(new Error('No package.json found in ' + dir)); }
 
   const pm = detectPackageManager(dir);
   const deps = {};
-  Object.entries(pkg.dependencies    || {}).forEach(([n, v]) => { deps[n] = { name: n, declared: v, type: 'prod' }; });
-  Object.entries(pkg.devDependencies || {}).forEach(([n, v]) => { deps[n] = { name: n, declared: v, type: 'dev'  }; });
+  Object.entries(pkg.dependencies || {}).forEach(([n, v]) => { deps[n] = { name: n, declared: v, type: 'prod' }; });
+  Object.entries(pkg.devDependencies || {}).forEach(([n, v]) => { deps[n] = { name: n, declared: v, type: 'dev' }; });
 
   // Build outdated command per package manager
   // pnpm outdated outputs a table, not JSON — use npm-compatible JSON via --json flag
   // yarn outdated also has JSON support
   const outdatedCmd = pm === 'pnpm' ? 'pnpm outdated --json'
     : pm === 'yarn' ? 'yarn outdated --json'
-    : pm === 'bun'  ? 'bun outdated'         // bun outdated: plain text, parse manually
-    : 'npm outdated --json';
+      : pm === 'bun' ? 'bun outdated'         // bun outdated: plain text, parse manually
+        : 'npm outdated --json';
 
   exec(outdatedCmd, { cwd: dir, timeout: 30000, shell: true }, (_e, stdout) => {
     let outdated = {};
 
     if (pm === 'pnpm') {
       // pnpm outdated --json returns { "pkg": { current, latest, wanted } }
-      try { outdated = JSON.parse(stdout || '{}'); } catch(e) {}
+      try { outdated = JSON.parse(stdout || '{}'); } catch (e) { }
       Object.entries(outdated).forEach(([name, info]) => {
         if (deps[name]) {
-          deps[name].current  = info.current;
-          deps[name].wanted   = info.wanted;
-          deps[name].latest   = info.latest;
+          deps[name].current = info.current;
+          deps[name].wanted = info.wanted;
+          deps[name].latest = info.latest;
           deps[name].outdated = !!info.current && info.current !== info.latest;
         }
       });
@@ -683,14 +685,14 @@ function getDepsInfo(dir, cb) {
               // row: [name, current, wanted, latest, ...]
               const [name, current, wanted, latest] = row;
               if (deps[name]) {
-                deps[name].current  = current;
-                deps[name].wanted   = wanted;
-                deps[name].latest   = latest;
+                deps[name].current = current;
+                deps[name].wanted = wanted;
+                deps[name].latest = latest;
                 deps[name].outdated = current !== latest;
               }
             });
           }
-        } catch(e) {}
+        } catch (e) { }
       });
 
     } else if (pm === 'bun') {
@@ -698,20 +700,20 @@ function getDepsInfo(dir, cb) {
       (stdout || '').split('\n').forEach(line => {
         const parts = line.trim().split(/\s+/);
         if (parts.length >= 3 && deps[parts[0]]) {
-          deps[parts[0]].current  = parts[1];
-          deps[parts[0]].latest   = parts[2];
+          deps[parts[0]].current = parts[1];
+          deps[parts[0]].latest = parts[2];
           deps[parts[0]].outdated = parts[1] !== parts[2];
         }
       });
 
     } else {
       // npm outdated --json
-      try { outdated = JSON.parse(stdout || '{}'); } catch(e) {}
+      try { outdated = JSON.parse(stdout || '{}'); } catch (e) { }
       Object.entries(outdated).forEach(([name, info]) => {
         if (deps[name]) {
-          deps[name].current  = info.current;
-          deps[name].wanted   = info.wanted;
-          deps[name].latest   = info.latest;
+          deps[name].current = info.current;
+          deps[name].wanted = info.wanted;
+          deps[name].latest = info.latest;
           deps[name].outdated = !!info.current && info.current !== info.latest;
         }
       });
@@ -719,9 +721,9 @@ function getDepsInfo(dir, cb) {
 
     // Audit — only npm and pnpm support --json audit
     const auditCmd = pm === 'pnpm' ? 'pnpm audit --json'
-      : pm === 'bun'  ? null   // bun audit not yet stable
-      : pm === 'yarn' ? null   // yarn audit JSON differs significantly
-      : 'npm audit --json';
+      : pm === 'bun' ? null   // bun audit not yet stable
+        : pm === 'yarn' ? null   // yarn audit JSON differs significantly
+          : 'npm audit --json';
 
     if (!auditCmd) {
       return cb(null, { deps: Object.values(deps), auditSummary: {}, packageManager: pm });
@@ -729,13 +731,13 @@ function getDepsInfo(dir, cb) {
 
     exec(auditCmd, { cwd: dir, timeout: 30000, shell: true }, (_e2, stdout2) => {
       let audit = {};
-      try { audit = JSON.parse(stdout2 || '{}'); } catch(e) {}
+      try { audit = JSON.parse(stdout2 || '{}'); } catch (e) { }
 
       const vulns = audit.vulnerabilities || {};
       Object.entries(vulns).forEach(([name, info]) => {
         if (deps[name]) {
           deps[name].vulnerable = true;
-          deps[name].severity   = info.severity || 'low';
+          deps[name].severity = info.severity || 'low';
         }
       });
 
@@ -759,7 +761,7 @@ function getProcessList(cb) {
         const raw = JSON.parse((stdout || '').trim());
         const arr = Array.isArray(raw) ? raw : (raw ? [raw] : []);
         procs = arr.map(p => ({ name: p.Name || '', pid: p.Id || 0, cpu: p.CPU || 0, mem: p.Mem || 0 }));
-      } catch(e) {}
+      } catch (e) { }
       cb(null, procs);
     });
   } else {
@@ -767,7 +769,7 @@ function getProcessList(cb) {
       if (err && !stdout) return cb(err);
       const procs = (stdout || '').split('\n').slice(1).filter(l => l.trim()).map(l => {
         const p = l.trim().split(/\s+/);
-        return { name: p.slice(10).join(' ').slice(0, 50), pid: parseInt(p[1])||0, cpu: parseFloat(p[2])||0, mem: parseFloat(p[3])||0 };
+        return { name: p.slice(10).join(' ').slice(0, 50), pid: parseInt(p[1]) || 0, cpu: parseFloat(p[2]) || 0, mem: parseFloat(p[3]) || 0 };
       }).filter(p => p.pid);
       cb(null, procs);
     });
@@ -785,7 +787,7 @@ function findLogFiles(dir) {
           const full = path.join(dir, f);
           const s = fs.statSync(full);
           if (s.isFile()) results.push({ name: f, path: full, size: s.size, mtime: s.mtime });
-        } catch(e) {}
+        } catch (e) { }
       }
     });
     LOG_DIRS.forEach(ld => {
@@ -796,12 +798,12 @@ function findLogFiles(dir) {
               const full = path.join(dir, ld, f);
               const s = fs.statSync(full);
               if (s.isFile()) results.push({ name: `${ld}/${f}`, path: full, size: s.size, mtime: s.mtime });
-            } catch(e) {}
+            } catch (e) { }
           }
         });
-      } catch(e) {}
+      } catch (e) { }
     });
-  } catch(e) {}
+  } catch (e) { }
   return results.sort((a, b) => new Date(b.mtime) - new Date(a.mtime));
 }
 
@@ -819,8 +821,5 @@ server.on('error', (e) => {
     console.error(e);
   }
   process.exit(1);
-<<<<<<< HEAD
 });
-=======
-});
->>>>>>> 9d3e31cd61d2cb6c2adb85c500244b411a1a12d0
+
